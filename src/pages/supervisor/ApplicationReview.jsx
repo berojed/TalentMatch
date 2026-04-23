@@ -6,6 +6,7 @@ import {
   updateApplicationStatus,
   getApplicationCvPath,
   getStorageFileUrls,
+  toggleApplicationFavorite,
 } from '../../lib/supervisorApi'
 
 const STATUS_LABELS = {
@@ -33,6 +34,7 @@ export default function ApplicationReview() {
   const [deciding, setDeciding] = useState(false)
   const [cvPath, setCvPath] = useState(null)
   const [cvLoading, setCvLoading] = useState(false)
+  const [favorited, setFavorited] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -40,6 +42,7 @@ export default function ApplicationReview() {
         const data = await getApplicationById(applicationId)
         setApplication(data)
         if (data) {
+          setFavorited(data.is_favorited || false)
           const path = await getApplicationCvPath(data)
           setCvPath(path)
         }
@@ -60,6 +63,17 @@ export default function ApplicationReview() {
       if (url) window.open(url, '_blank')
     } finally {
       setCvLoading(false)
+    }
+  }
+
+  const handleToggleFavorite = async () => {
+    const next = !favorited
+    setFavorited(next)
+    try {
+      await toggleApplicationFavorite(applicationId, next)
+    } catch (err) {
+      setFavorited(!next) // rollback
+      console.error(err)
     }
   }
 
@@ -161,10 +175,11 @@ export default function ApplicationReview() {
               </div>
 
               <button
-                className="mt-1 shrink-0 text-neutral-300 hover:text-black transition"
-                title="Bookmark"
+                onClick={handleToggleFavorite}
+                className={`mt-1 shrink-0 transition ${favorited ? 'text-black' : 'text-neutral-300 hover:text-black'}`}
+                title={favorited ? 'Remove from favorites' : 'Add to favorites'}
               >
-                <Bookmark className="h-5 w-5" />
+                <Bookmark className={`h-5 w-5 ${favorited ? 'fill-current' : ''}`} />
               </button>
             </div>
 

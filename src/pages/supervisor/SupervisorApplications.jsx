@@ -42,6 +42,7 @@ function statusLabel(status) {
 }
 
 export default function SupervisorApplications() {
+  const [showFavorites, setShowFavorites] = useState(false)
   const [searchParams] = useSearchParams()
   const projectFilter = searchParams.get('project')
   const statusParam = searchParams.get('status')
@@ -65,7 +66,10 @@ export default function SupervisorApplications() {
     async function load() {
       setLoading(true)
       try {
-        const data = await getSupervisorApplications(projectFilter || null)
+        const data = await getSupervisorApplications(
+          projectFilter || null,
+          { favoritedOnly: showFavorites }
+        )
         setApplications(data)
       } catch (err) {
         console.error(err)
@@ -74,11 +78,13 @@ export default function SupervisorApplications() {
       }
     }
     load()
-  }, [projectFilter])
+  }, [projectFilter, showFavorites])
 
   const filtered = useMemo(() => {
     return applications.filter((app) => {
-      if (statusFilter && app.status !== statusFilter) return false
+      if (statusFilter && app.status !== statusFilter) {
+        return false
+      }
       if (search) {
         const q = search.toLowerCase()
         const name =
@@ -194,11 +200,22 @@ export default function SupervisorApplications() {
         Back to Dashboard
       </Link>
 
-      <h1 className="text-4xl font-bold tracking-tight text-black">
-        All Applications
-      </h1>
+      <div className="flex items-baseline gap-4">
+        <h1 className="text-4xl font-bold tracking-tight text-black">
+          {showFavorites ? 'Shortlisted Applications' : 'All Applications'}
+        </h1>
+        <button
+          type="button"
+          onClick={() => setShowFavorites((v) => !v)}
+          className="text-sm text-neutral-500 underline-offset-2 hover:underline hover:text-black transition"
+        >
+          {showFavorites ? 'Show All' : 'Show Shortlisted'}
+        </button>
+      </div>
       <p className="mt-1 text-neutral-500">
-        Review and manage all student applications across your projects.
+        {showFavorites
+          ? "Applications you've shortlisted for follow-up."
+          : 'Review and manage all student applications across your projects.'}
       </p>
 
       {/* Filters card */}

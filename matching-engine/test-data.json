@@ -1,0 +1,152 @@
+{
+  "opportunity": {
+    "id": "opp-accelerator-2026",
+    "title": "Accelerator Physics Research Internship",
+    "requiredSkills": [
+      { "name": "python", "weight": 1.5 },
+      { "name": "simulation", "weight": 1.4 },
+      { "name": "accelerator design", "weight": 1.7 },
+      { "name": "data analytics", "weight": 1.1 }
+    ],
+    "optionalSkills": [
+      { "name": "geant4", "weight": 1.2 },
+      { "name": "c++", "weight": 1.1 },
+      { "name": "machine learning", "weight": 0.8 }
+    ],
+    "coreSkills": ["python", "simulation"],
+    "preferredFields": ["accelerator physics", "medical physics"],
+    "researchAreas": ["particle physics"],
+    "availability": {
+      "startDate": "2026-06-01",
+      "endDate": "2026-09-30"
+    },
+    "eligibility": {
+      "requiredFlags": ["documentsReady"]
+    },
+    "metadata": {
+      "supervisorId": "sup-101",
+      "department": "Accelerator Physics"
+    }
+  },
+  "candidates": [
+    {
+      "id": "cand-001",
+      "name": "Alex Example",
+      "gender": "male",
+      "nationality": "Croatian",
+      "skills": [
+        { "name": "python", "weight": 1 },
+        { "name": "simulation", "weight": 1 },
+        { "name": "accelerator design", "weight": 1 },
+        { "name": "geant4", "weight": 1 },
+        { "name": "data analytics", "weight": 1 }
+      ],
+      "preferredFields": ["accelerator physics", "medical physics"],
+      "availability": {
+        "availableFrom": "2026-05-20",
+        "availableTo": "2026-10-10"
+      },
+      "eligibility": {
+        "basicEligible": true,
+        "flags": ["documentsReady", "labAccessReady"]
+      }
+    },
+    {
+      "id": "cand-002",
+      "name": "Mina Sample",
+      "gender": "female",
+      "country": "Germany",
+      "skills": [
+        { "name": "python", "weight": 1 },
+        { "name": "machine learning", "weight": 1 },
+        { "name": "deep learning", "weight": 1 },
+        { "name": "data science", "weight": 1 }
+      ],
+      "preferredFields": ["artificial intelligence", "machine learning"],
+      "availability": {
+        "availableFrom": "2026-06-15",
+        "availableTo": "2026-09-01"
+      },
+      "eligibility": {
+        "basicEligible": true,
+        "flags": ["documentsReady"]
+      }
+    },
+    {
+      "id": "cand-003",
+      "name": "Jordan Candidate",
+      "ethnicity": "withheld",
+      "skills": [
+        { "name": "python", "weight": 1 },
+        { "name": "simulation", "weight": 1 },
+        { "name": "beam physics", "weight": 1.1 },
+        { "name": "matlab", "weight": 0.9 }
+      ],
+      "preferredFields": ["particle physics", "nuclear physics"],
+      "availability": {
+        "availableFrom": "2026-07-01",
+        "availableTo": "2026-12-01"
+      },
+      "eligibility": {
+        "basicEligible": true,
+        "flags": ["documentsReady"]
+      }
+    },
+    {
+      "id": "cand-004",
+      "fullName": "Taylor NoOverlap",
+      "skills": [
+        { "name": "python", "weight": 1 },
+        { "name": "simulation", "weight": 1 },
+        { "name": "accelerator design", "weight": 1 }
+      ],
+      "preferredFields": ["accelerator physics"],
+      "availability": {
+        "availableFrom": "2026-11-01",
+        "availableTo": "2027-01-31"
+      },
+      "eligibility": {
+        "basicEligible": true,
+        "flags": ["documentsReady"]
+      }
+    },
+    {
+      "id": "cand-005",
+      "name": "Pat MissingCoreSkill",
+      "skills": [
+        { "name": "c++", "weight": 1 },
+        { "name": "lab safety", "weight": 1 },
+        { "name": "technical writing", "weight": 1 }
+      ],
+      "preferredFields": ["medical physics"],
+      "availability": {
+        "availableFrom": "2026-06-01",
+        "availableTo": "2026-09-30"
+      },
+      "eligibility": {
+        "basicEligible": true,
+        "flags": ["documentsReady"]
+      }
+    },
+    {
+      "id": "cand-006",
+      "name": "Sam EligibilityFail",
+      "skills": [
+        { "name": "python", "weight": 1 },
+        { "name": "simulation", "weight": 1 },
+        { "name": "accelerator design", "weight": 1 },
+        { "name": "geant4", "weight": 1 }
+      ],
+      "preferredFields": ["accelerator physics"],
+      "availability": {
+        "availableFrom": "2026-06-01",
+        "availableTo": "2026-09-30"
+      },
+      "eligibility": {
+        "basicEligible": false,
+        "flags": ["documentsReady"]
+      }
+    }
+  ]
+}
+

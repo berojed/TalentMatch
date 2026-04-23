@@ -95,7 +95,7 @@ export default function AuthRoleSelection({ mode }) {
     <main className="min-h-screen bg-neutral-100 px-4 py-20 text-neutral-900 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
         <header className="mb-14 text-center">
-          <h1 className="mb-3 text-6xl font-bold tracking-tight text-black">TalentMatch</h1>
+          <Link to="/" className="mb-3 inline-block text-6xl font-bold tracking-tight text-black hover:underline underline-offset-4 transition">TalentMatch</Link>
           <p className="text-3xl text-neutral-600">
             {mode === 'signup'
               ? 'Create Your Account'

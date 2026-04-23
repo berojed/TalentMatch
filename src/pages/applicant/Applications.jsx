@@ -4,28 +4,24 @@ import { discardApplication, getApplications } from '../../lib/applicantApi'
 
 const tabs = [
   { key: 'all', label: 'All Applications' },
-  { key: 'in_review', label: 'In Review' },
-  { key: 'accepted', label: 'Accepted' },
-  { key: 'rejected', label: 'Rejected' },
+  { key: 'UNDER_REVIEW', label: 'In Review' },
+  { key: 'ACCEPTED', label: 'Accepted' },
+  { key: 'REJECTED', label: 'Rejected' },
 ]
 
 const timelineSteps = [
-  { key: 'submitted', label: 'Application submitted' },
-  { key: 'in_review', label: 'Your documents are being reviewed' },
-  { key: 'supervisor_review', label: 'Supervisor is reviewing your application' },
+  { key: 'SUBMITTED', label: 'Application submitted' },
+  { key: 'UNDER_REVIEW', label: 'Your documents are being reviewed' },
+  { key: 'SHORTLISTED', label: 'Supervisor is reviewing your application' },
   { key: 'decision', label: 'Accepted/Rejected' },
 ]
 
 function getStepIndex(status) {
-  if (status === 'submitted') {
-    return 0
-  }
-  if (status === 'in_review') {
-    return 1
-  }
-  if (status === 'accepted' || status === 'rejected') {
-    return 3
-  }
+  const s = String(status).toUpperCase()
+  if (s === 'SUBMITTED') return 0
+  if (s === 'UNDER_REVIEW') return 1
+  if (s === 'SHORTLISTED') return 2
+  if (s === 'ACCEPTED' || s === 'REJECTED') return 3
   return 0
 }
 
@@ -43,24 +39,25 @@ function formatDate(dateValue) {
 
 function ApplicationCard({ application, onDiscard }) {
   const stepIndex = getStepIndex(application.status)
-  const isRejected = application.status === 'rejected'
+  const s = String(application.status).toUpperCase()
+  const isRejected = s === 'REJECTED'
 
   return (
-    <article className="rounded border border-neutral-200 bg-white p-8">
-      <header className="flex flex-col justify-between gap-3 border-b border-neutral-200 pb-5 xl:flex-row xl:items-start">
+    <article className="rounded border border-neutral-200 bg-white p-6">
+      <header className="flex flex-col justify-between gap-3 border-b border-neutral-200 pb-4 xl:flex-row xl:items-start">
         <div>
-          <h3 className="text-5xl font-bold leading-tight text-black">{application.projects?.title}</h3>
-          <div className="mt-4 flex flex-wrap gap-6 text-lg text-neutral-600">
-            <span className="inline-flex items-center gap-2">
-              <MapPin className="h-5 w-5" />
+          <h3 className="text-lg font-bold leading-tight text-black">{application.projects?.title}</h3>
+          <div className="mt-2 flex flex-wrap gap-4 text-sm text-neutral-500">
+            <span className="inline-flex items-center gap-1.5">
+              <MapPin className="h-4 w-4" />
               {application.projects?.location}
             </span>
-            <span className="inline-flex items-center gap-2">
-              <UserRound className="h-5 w-5" />
-              {application.projects?.supervisor_name}
+            <span className="inline-flex items-center gap-1.5">
+              <UserRound className="h-4 w-4" />
+              {application.projects?.supervisor_name || '—'}
             </span>
-            <span className="inline-flex items-center gap-2">
-              <BriefcaseBusiness className="h-5 w-5" />
+            <span className="inline-flex items-center gap-1.5">
+              <BriefcaseBusiness className="h-4 w-4" />
               {application.projects?.department}
             </span>
           </div>
@@ -69,34 +66,34 @@ function ApplicationCard({ application, onDiscard }) {
         <button
           type="button"
           onClick={onDiscard}
-          className="inline-flex items-center gap-2 self-start rounded-full border border-red-400 px-4 py-2 text-base text-red-500 transition hover:bg-red-50"
+          className="inline-flex items-center gap-1.5 self-start rounded-full border border-red-400 px-3 py-1.5 text-sm text-red-500 transition hover:bg-red-50"
         >
           <Trash2 className="h-4 w-4" />
           Discard
         </button>
       </header>
 
-      <div className="mt-6 flex flex-col justify-between gap-6 xl:flex-row">
+      <div className="mt-4 flex flex-col justify-between gap-4 xl:flex-row">
         <div>
-          <p className="text-lg text-neutral-500">Application ID</p>
-          <p className="text-3xl font-medium text-neutral-800">#{application.id}</p>
+          <p className="text-xs text-neutral-500">Application ID</p>
+          <p className="text-sm font-medium text-neutral-800">#{(application.application_id || application.id || '').slice(0, 8)}</p>
         </div>
 
         <div className="text-left xl:text-right">
-          <p className="text-lg text-neutral-500">Submitted</p>
-          <p className="text-3xl font-medium text-neutral-800">{formatDate(application.submitted_at)}</p>
+          <p className="text-xs text-neutral-500">Submitted</p>
+          <p className="text-sm font-medium text-neutral-800">{formatDate(application.submitted_at)}</p>
         </div>
       </div>
 
-      <ol className="mt-8 space-y-6">
+      <ol className="mt-6 space-y-4">
         {timelineSteps.map((step, index) => {
           const active = index <= stepIndex
-          const isFinal = step.key === 'decision' && (application.status === 'accepted' || isRejected)
+          const isFinal = step.key === 'decision' && (s === 'ACCEPTED' || isRejected)
 
           return (
-            <li key={step.key} className="relative flex items-start gap-4 pl-2">
+            <li key={step.key} className="relative flex items-start gap-3 pl-1">
               <span
-                className={`mt-1 inline-flex h-7 w-7 items-center justify-center rounded-full border ${
+                className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full border ${
                   active
                     ? isRejected && isFinal
                       ? 'border-red-500 bg-red-500'
@@ -107,7 +104,7 @@ function ApplicationCard({ application, onDiscard }) {
                 <span className="h-2 w-2 rounded-full bg-white" />
               </span>
               <p
-                className={`text-2xl ${
+                className={`text-sm ${
                   active
                     ? isRejected && isFinal
                       ? 'text-red-500'
@@ -115,8 +112,8 @@ function ApplicationCard({ application, onDiscard }) {
                     : 'text-neutral-500'
                 }`}
               >
-                {step.key === 'decision' && (application.status === 'accepted' || isRejected)
-                  ? application.status === 'accepted'
+                {step.key === 'decision' && (s === 'ACCEPTED' || isRejected)
+                  ? s === 'ACCEPTED'
                     ? 'Accepted'
                     : 'Rejected'
                   : step.label}
@@ -130,7 +127,7 @@ function ApplicationCard({ application, onDiscard }) {
 }
 
 export default function Applications() {
-  const [activeTab, setActiveTab] = React.useState('in_review')
+  const [activeTab, setActiveTab] = React.useState('all')
   const [applications, setApplications] = React.useState([])
   const [loading, setLoading] = React.useState(true)
 
@@ -151,17 +148,17 @@ export default function Applications() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1500px] px-4 py-12 sm:px-8">
-      <h1 className="text-7xl font-bold tracking-tight text-black">My Applications</h1>
-      <p className="mt-3 text-2xl text-neutral-600">Track the status of your submitted applications.</p>
+    <main className="mx-auto max-w-[1100px] px-6 py-10">
+      <h1 className="text-3xl font-bold tracking-tight text-black">My Applications</h1>
+      <p className="mt-1 text-neutral-500">Track the status of your submitted applications.</p>
 
-      <div className="mt-8 flex flex-wrap gap-3">
+      <div className="mt-6 flex flex-wrap gap-2">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             type="button"
             onClick={() => setActiveTab(tab.key)}
-            className={`rounded-full border px-6 py-2 text-xl transition ${
+            className={`rounded-full border px-4 py-1.5 text-sm transition ${
               activeTab === tab.key
                 ? 'border-yellow-500 bg-yellow-400 text-black'
                 : 'border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100'
@@ -183,9 +180,9 @@ export default function Applications() {
 
         {applications.map((application) => (
           <ApplicationCard
-            key={application.id}
+            key={application.application_id || application.id}
             application={application}
-            onDiscard={() => handleDiscard(application.id)}
+            onDiscard={() => handleDiscard(application.application_id || application.id)}
           />
         ))}
       </section>

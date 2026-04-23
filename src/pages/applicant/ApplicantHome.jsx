@@ -1,5 +1,5 @@
 import React from 'react'
-import { BookOpenText, Search, UsersRound, Clock3, MapPin, Microscope } from 'lucide-react'
+import { BookOpenText, Search, UsersRound, Clock3, MapPin, Microscope, UserRound, FolderOpen } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { getApplicantDashboardData } from '../../lib/applicantApi'
 
@@ -12,8 +12,8 @@ function StatCard({ title, value, description, icon: Icon }) {
           <Icon className="h-5 w-5" />
         </span>
       </div>
-      <p className="text-5xl font-bold text-black">{value}</p>
-      <p className="mt-2 text-base text-neutral-500">{description}</p>
+      <p className="text-3xl font-bold text-black">{value}</p>
+      <p className="mt-1 text-sm text-neutral-500">{description}</p>
     </article>
   )
 }
@@ -24,10 +24,9 @@ function ProjectCard({ project }) {
       <p className="mb-4 inline-block bg-neutral-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-600">
         {project.department}
       </p>
-      <h3 className="text-3xl font-bold leading-tight text-black">{project.title}</h3>
-      <p className="mt-3 text-base leading-relaxed text-neutral-600">{project.summary}</p>
+      <h3 className="text-lg font-bold leading-tight text-black">{project.title}</h3>
 
-      <ul className="mt-5 space-y-2 text-sm text-neutral-500">
+      <ul className="mt-4 space-y-2 text-sm text-neutral-500">
         <li className="flex items-center gap-2">
           <Clock3 className="h-4 w-4" />
           {project.duration}
@@ -40,10 +39,16 @@ function ProjectCard({ project }) {
           <Microscope className="h-4 w-4" />
           {(project.tags || []).join(', ')}
         </li>
+        {project.supervisor_name && (
+          <li className="flex items-center gap-2">
+            <UserRound className="h-4 w-4" />
+            {project.supervisor_name}
+          </li>
+        )}
       </ul>
 
       <Link
-        to={`/applicant/opportunities/${project.id}`}
+        to={`/applicant_dashboard/opportunities/${project.id}`}
         className="mt-5 inline-flex rounded bg-black px-5 py-3 text-sm font-semibold uppercase tracking-wider text-white transition hover:bg-neutral-800"
       >
         View Details
@@ -58,9 +63,14 @@ function SupervisorCard({ supervisor }) {
       <p className="mb-4 inline-block bg-neutral-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-600">
         {supervisor.domain}
       </p>
-      <h3 className="text-3xl font-bold text-black">{supervisor.name}</h3>
-      <p className="mt-2 text-lg text-neutral-500">{supervisor.title}</p>
-      <p className="mt-6 text-base leading-relaxed text-neutral-600">{supervisor.summary}</p>
+      <h3 className="text-lg font-bold text-black">{supervisor.name}</h3>
+      <p className="mt-1 text-sm text-neutral-500">{supervisor.title}</p>
+      {supervisor.projectTitle && (
+        <p className="mt-4 flex items-center gap-2 text-sm text-neutral-500">
+          <FolderOpen className="h-4 w-4" />
+          {supervisor.projectTitle}
+        </p>
+      )}
     </article>
   )
 }
@@ -101,14 +111,14 @@ export default function ApplicantHome() {
   }, [])
 
   return (
-    <main className="mx-auto w-full max-w-[1500px] px-4 py-12 sm:px-8">
+    <main className="mx-auto max-w-[1100px] px-6 py-10">
       <section>
-        <h1 className="text-6xl font-bold tracking-tight text-black sm:text-7xl">
+        <h1 className="text-3xl font-bold tracking-tight text-black">
           Welcome back, {state.profile?.first_name || 'Applicant'}
         </h1>
-        <p className="mt-3 text-2xl text-neutral-600">Quick overview of your research journey.</p>
+        <p className="mt-1 text-neutral-500">Quick overview of your research journey.</p>
 
-        <div className="mt-10 grid gap-4 md:grid-cols-3">
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
           <StatCard
             title="Total Applications"
             value={state.stats.totalApplications}
@@ -131,7 +141,7 @@ export default function ApplicantHome() {
 
         <div className="mt-8 text-center">
           <Link
-            to="/applicant/applications"
+            to="/applicant_dashboard/applications"
             className="inline-flex rounded bg-black px-10 py-4 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-neutral-800"
           >
             View All Applications
@@ -139,8 +149,8 @@ export default function ApplicantHome() {
         </div>
       </section>
 
-      <section className="mt-20 border-t border-neutral-200 pt-14">
-        <h2 className="text-6xl font-bold tracking-tight text-black sm:text-7xl">Recommended for You</h2>
+      <section className="mt-14 border-t border-neutral-200 pt-10">
+        <h2 className="text-2xl font-bold tracking-tight text-black">Recommended for You</h2>
         <div className="mt-8 grid gap-4 xl:grid-cols-3">
           {(state.recommendedProjects || []).map((project) => (
             <ProjectCard key={project.id} project={project} />
@@ -148,8 +158,8 @@ export default function ApplicantHome() {
         </div>
       </section>
 
-      <section className="mt-20 border-t border-neutral-200 pt-14">
-        <h2 className="text-6xl font-bold uppercase tracking-tight text-black sm:text-7xl">
+      <section className="mt-14 border-t border-neutral-200 pt-10">
+        <h2 className="text-2xl font-bold uppercase tracking-tight text-black">
           Featured Supervisors
         </h2>
         <div className="mt-8 grid gap-4 xl:grid-cols-3">

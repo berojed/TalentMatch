@@ -14,7 +14,7 @@ export default function SupervisorHeader() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
-    navigate('/auth/login')
+    navigate('/')
   }
 
   return (

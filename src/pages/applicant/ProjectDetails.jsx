@@ -7,10 +7,10 @@ import { getProjectDetails, submitApplication } from '../../lib/applicantApi'
 function DetailRow({ icon: Icon, label, value }) {
   return (
     <div className="flex items-start gap-3">
-      <Icon className="mt-1 h-5 w-5 text-neutral-700" />
+      <Icon className="mt-0.5 h-4 w-4 text-neutral-700" />
       <div>
-        <p className="text-base text-neutral-500">{label}</p>
-        <p className="text-3xl font-medium text-neutral-800">{value}</p>
+        <p className="text-xs text-neutral-500">{label}</p>
+        <p className="text-sm font-medium text-neutral-800">{value}</p>
       </div>
     </div>
   )
@@ -18,33 +18,33 @@ function DetailRow({ icon: Icon, label, value }) {
 
 function QuickInfo({ project }) {
   return (
-    <aside className="h-fit rounded border border-neutral-200 bg-white p-8 lg:sticky lg:top-28">
-      <h2 className="text-5xl font-bold text-black">Quick Info</h2>
+    <aside className="h-fit rounded border border-neutral-200 bg-white p-7 lg:sticky lg:top-28">
+      <h2 className="text-lg font-semibold text-black">Quick Info</h2>
 
-      <div className="mt-6 space-y-6">
+      <div className="mt-5 space-y-5">
         <div>
-          <p className="text-lg uppercase tracking-wide text-neutral-500">Research Center</p>
-          <p className="mt-1 text-3xl text-neutral-800">{project.research_center}</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Research Center</p>
+          <p className="mt-1 text-sm text-neutral-800">{project.research_center}</p>
         </div>
         <div>
-          <p className="text-lg uppercase tracking-wide text-neutral-500">Department</p>
-          <p className="mt-1 text-3xl text-neutral-800">{project.department}</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Department</p>
+          <p className="mt-1 text-sm text-neutral-800">{project.department}</p>
         </div>
         <div>
-          <p className="text-lg uppercase tracking-wide text-neutral-500">Location</p>
-          <p className="mt-1 text-3xl text-neutral-800">{project.location}</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Location</p>
+          <p className="mt-1 text-sm text-neutral-800">{project.location}</p>
         </div>
         <div>
-          <p className="text-lg uppercase tracking-wide text-neutral-500">Duration</p>
-          <p className="mt-1 text-3xl text-neutral-800">{project.duration}</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Duration</p>
+          <p className="mt-1 text-sm text-neutral-800">{project.duration}</p>
         </div>
         <div>
-          <p className="text-lg uppercase tracking-wide text-neutral-500">Education Level</p>
-          <p className="mt-1 text-3xl text-neutral-800">{project.education_level}</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Education Level</p>
+          <p className="mt-1 text-sm text-neutral-800">{project.education_level}</p>
         </div>
         <div>
-          <p className="text-lg uppercase tracking-wide text-neutral-500">Compensation</p>
-          <p className="mt-1 text-3xl text-neutral-800">
+          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Compensation</p>
+          <p className="mt-1 text-sm text-neutral-800">
             {project.compensation === 'paid' ? 'Paid' : 'Unpaid'}
           </p>
         </div>
@@ -83,20 +83,31 @@ export default function ProjectDetails() {
       return
     }
 
+    if (!coverLetter?.trim() && !file) {
+      setFeedback('Please provide a cover letter or upload a file before submitting.')
+      return
+    }
+
     setIsSubmitting(true)
-    await submitApplication({
-      projectId: project.id,
-      coverLetterText: coverLetter,
-      coverLetterFile: file,
-    })
-    setIsSubmitting(false)
-    setIsModalOpen(false)
-    setFeedback('Application submitted successfully.')
+    setFeedback('')
+    try {
+      await submitApplication({
+        projectId: project.project_id || project.id,
+        coverLetterText: coverLetter,
+        coverLetterFile: file,
+      })
+      setIsModalOpen(false)
+      setFeedback('Application submitted successfully.')
+    } catch (err) {
+      setFeedback(err?.message || 'Submission failed. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (loading) {
     return (
-      <main className="mx-auto w-full max-w-[1500px] px-4 py-12 sm:px-8">
+      <main className="mx-auto max-w-[1100px] px-6 py-10">
         <p className="text-neutral-600">Loading project...</p>
       </main>
     )
@@ -104,11 +115,11 @@ export default function ProjectDetails() {
 
   if (!project) {
     return (
-      <main className="mx-auto w-full max-w-[1500px] px-4 py-12 sm:px-8">
+      <main className="mx-auto max-w-[1100px] px-6 py-10">
         <p className="text-neutral-700">Project not found.</p>
         <button
           type="button"
-          onClick={() => navigate('/applicant/opportunities')}
+          onClick={() => navigate('/applicant_dashboard/opportunities')}
           className="mt-3 rounded border border-neutral-300 px-4 py-2"
         >
           Back to Opportunities
@@ -118,34 +129,34 @@ export default function ProjectDetails() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1500px] px-4 py-12 sm:px-8">
+    <main className="mx-auto max-w-[1100px] px-6 py-10">
       <button
         type="button"
-        onClick={() => navigate('/applicant/opportunities')}
-        className="inline-flex items-center gap-2 text-2xl text-neutral-600 transition hover:text-black"
+        onClick={() => navigate('/applicant_dashboard/opportunities')}
+        className="inline-flex items-center gap-1.5 text-sm text-neutral-500 transition hover:text-black"
       >
         <ArrowLeft className="h-5 w-5" />
         Back to Projects
       </button>
 
-      <div className="mt-8 grid gap-5 lg:grid-cols-[1fr_520px]">
+      <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_340px]">
         <div className="space-y-4">
-          <section className="rounded border border-neutral-200 bg-white p-8">
+          <section className="rounded border border-neutral-200 bg-white p-7">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h1 className="text-7xl font-bold leading-tight text-black">{project.title}</h1>
-                <p className="mt-2 text-3xl text-neutral-600">{project.department}</p>
+                <h1 className="text-2xl font-bold leading-tight text-black">{project.title}</h1>
+                <p className="mt-1 text-sm text-neutral-600">{project.department}</p>
               </div>
-              <span className="rounded border border-green-200 bg-green-50 px-4 py-2 text-lg text-green-700">
+              <span className="rounded border border-green-200 bg-green-50 px-3 py-1 text-xs text-green-700">
                 Active
               </span>
             </div>
-            <p className="mt-6 text-3xl leading-relaxed text-neutral-700">{project.summary}</p>
+            <p className="mt-4 text-sm leading-relaxed text-neutral-700">{project.summary}</p>
           </section>
 
-          <section className="rounded border border-neutral-200 bg-white p-8">
-            <h2 className="text-5xl font-bold text-black">Project Details</h2>
-            <span className="mt-4 inline-block rounded bg-neutral-100 px-3 py-1 text-base text-neutral-600">
+          <section className="rounded border border-neutral-200 bg-white p-7">
+            <h2 className="text-lg font-semibold text-black">Project Details</h2>
+            <span className="mt-3 inline-block rounded bg-neutral-100 px-3 py-1 text-xs text-neutral-600">
               {project.compensation === 'paid' ? 'Paid Position' : 'Unpaid Position'}
             </span>
 
@@ -157,35 +168,39 @@ export default function ProjectDetails() {
             </div>
           </section>
 
-          <section className="rounded border border-neutral-200 bg-white p-8">
-            <h2 className="text-5xl font-bold text-black">Research Areas</h2>
-            <div className="mt-4 flex flex-wrap gap-2">
+          <section className="rounded border border-neutral-200 bg-white p-7">
+            <h2 className="text-lg font-semibold text-black">Research Areas</h2>
+            <div className="mt-3 flex flex-wrap gap-2">
               {(project.tags || []).map((tag) => (
-                <span key={tag} className="rounded bg-neutral-100 px-3 py-1 text-2xl text-neutral-600">
+                <span key={tag} className="rounded bg-neutral-100 px-2.5 py-1 text-xs text-neutral-600">
                   {tag}
                 </span>
               ))}
             </div>
           </section>
 
-          <section className="rounded border border-neutral-200 bg-white p-8">
-            <h2 className="text-5xl font-bold text-black">Special Requirements</h2>
-            <p className="mt-4 text-3xl leading-relaxed text-neutral-700">{project.requirements}</p>
+          <section className="rounded border border-neutral-200 bg-white p-7">
+            <h2 className="text-lg font-semibold text-black">Special Requirements</h2>
+            <p className="mt-3 text-sm leading-relaxed text-neutral-700">{project.requirements}</p>
           </section>
 
-          <section className="rounded border border-neutral-200 bg-white p-8">
-            <h2 className="text-5xl font-bold text-black">Ready to Apply?</h2>
-            <p className="mt-4 text-3xl leading-relaxed text-neutral-700">
+          <section className="rounded border border-neutral-200 bg-white p-7">
+            <h2 className="text-lg font-semibold text-black">Ready to Apply?</h2>
+            <p className="mt-3 text-sm leading-relaxed text-neutral-700">
               Submit your application to express your interest in this research project. We&apos;ll review your qualifications and get back to you soon.
             </p>
             <button
               type="button"
               onClick={() => setIsModalOpen(true)}
-              className="mt-6 rounded bg-black px-8 py-4 text-xl font-semibold uppercase tracking-wider text-white transition hover:bg-neutral-800"
+              className="mt-4 rounded bg-black px-6 py-2.5 text-sm font-medium text-white transition hover:bg-neutral-800"
             >
               Submit an Application
             </button>
-            {feedback && <p className="mt-4 text-base text-green-700">{feedback}</p>}
+            {feedback && (
+              <p className={`mt-4 text-base ${feedback.includes('success') ? 'text-green-700' : 'text-red-600'}`}>
+                {feedback}
+              </p>
+            )}
           </section>
         </div>
 

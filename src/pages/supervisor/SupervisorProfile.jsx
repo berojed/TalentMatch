@@ -3,7 +3,6 @@ import {
   Pencil,
   Check,
   X,
-  BookOpen,
   FileText,
 } from 'lucide-react'
 import {
@@ -152,9 +151,14 @@ function AccountInformation({ profile, onSave }) {
 
     setCvLoading(true)
     try {
-      const uploadedPath = await uploadSupervisorCv(file)
-      setCvPath(uploadedPath)
+      await uploadSupervisorCv(file)
+      // Re-fetch canonical path so View/Download reflect the new file immediately
+      const refreshed = await getSupervisorCvFilePath()
+      setCvPath(refreshed)
       setCvMessage('CV uploaded successfully.')
+    } catch (err) {
+      console.error(err)
+      setCvMessage('Upload failed. Please try again.')
     } finally {
       event.target.value = ''
       setCvLoading(false)
@@ -229,7 +233,7 @@ function AccountInformation({ profile, onSave }) {
               onClick={() =>
                 supabase.auth
                   .signOut()
-                  .then(() => (window.location.href = '/auth/login'))
+                  .then(() => (window.location.href = '/'))
               }
               className="rounded border border-neutral-300 px-5 py-2 text-sm font-medium text-black hover:bg-neutral-50 transition"
             >
@@ -372,7 +376,6 @@ function ResearchInformation({ profile, onSave }) {
     research_interests: profile?.research_interests || '',
     publications: profile?.publications || '',
     expertise_areas: profile?.expertise_areas || '',
-    teachable_points: profile?.teachable_points || '',
   })
 
   const set = (key) => (e) =>
@@ -457,49 +460,6 @@ function ResearchInformation({ profile, onSave }) {
         )}
       </div>
 
-      {/* ── Teachable Points ── */}
-      <div className="rounded-lg border border-neutral-200 bg-white p-7">
-        <div className="flex items-center gap-2 mb-4">
-          <BookOpen className="h-5 w-5 text-neutral-600" />
-          <h2 className="text-lg font-semibold text-black">Teachable Points</h2>
-        </div>
-        <p className="text-xs text-neutral-500 mb-4">
-          Skills, techniques, and knowledge areas you can teach to students working on your projects.
-        </p>
-
-        {!editing ? (
-          <div>
-            {profile?.teachable_points ? (
-              <div className="space-y-2">
-                {profile.teachable_points
-                  .split('\n')
-                  .filter(Boolean)
-                  .map((point, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-2 rounded border border-neutral-100 bg-neutral-50 px-4 py-2.5 text-sm text-black"
-                    >
-                      <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-black" />
-                      {point.trim()}
-                    </div>
-                  ))}
-              </div>
-            ) : (
-              <p className="text-sm text-neutral-400 italic">
-                No teachable points added yet. Click Edit above to add skills and knowledge areas you can teach.
-              </p>
-            )}
-          </div>
-        ) : (
-          <FieldTextarea
-            label="Teachable Points"
-            value={form.teachable_points}
-            onChange={set('teachable_points')}
-            placeholder="Enter one teachable point per line, e.g.:\nExperimental techniques in nuclear physics\nData analysis with ROOT framework\nScientific paper writing\nLab safety procedures"
-            rows={6}
-          />
-        )}
-      </div>
     </div>
   )
 }

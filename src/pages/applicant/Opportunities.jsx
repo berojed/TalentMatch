@@ -24,37 +24,37 @@ function ListProjectCard({ project }) {
   return (
     <article className="rounded border border-neutral-200 bg-white p-6">
       <div className="mb-3 flex items-start justify-between gap-3">
-        <h3 className="text-5xl font-bold leading-tight text-black">{project.title}</h3>
+        <h3 className="text-lg font-bold leading-tight text-black">{project.title}</h3>
         <span className="rounded-full border border-neutral-300 px-3 py-1 text-xs font-bold tracking-wider text-neutral-600">
           {formatCompensation(project.compensation)}
         </span>
       </div>
 
-      <p className="text-lg text-neutral-600">{project.summary}</p>
+      <p className="text-sm text-neutral-600">{project.summary}</p>
 
-      <div className="mt-5 grid gap-4 border-t border-neutral-200 pt-4 md:grid-cols-4">
+      <div className="mt-4 grid gap-3 border-t border-neutral-200 pt-3 md:grid-cols-4">
         <div>
-          <p className="text-sm uppercase tracking-wide text-neutral-400">Department</p>
-          <p className="text-lg text-neutral-700">{project.department}</p>
+          <p className="text-xs uppercase tracking-wide text-neutral-400">Department</p>
+          <p className="text-sm text-neutral-700">{project.department}</p>
         </div>
         <div>
-          <p className="text-sm uppercase tracking-wide text-neutral-400">Location</p>
-          <p className="text-lg text-neutral-700">{project.location}</p>
+          <p className="text-xs uppercase tracking-wide text-neutral-400">Location</p>
+          <p className="text-sm text-neutral-700">{project.location}</p>
         </div>
         <div>
-          <p className="text-sm uppercase tracking-wide text-neutral-400">Duration</p>
-          <p className="text-lg text-neutral-700">{project.duration}</p>
+          <p className="text-xs uppercase tracking-wide text-neutral-400">Duration</p>
+          <p className="text-sm text-neutral-700">{project.duration}</p>
         </div>
         <div>
-          <p className="text-sm uppercase tracking-wide text-neutral-400">Education Level</p>
-          <p className="text-lg text-neutral-700">{project.education_level}</p>
+          <p className="text-xs uppercase tracking-wide text-neutral-400">Education Level</p>
+          <p className="text-sm text-neutral-700">{project.education_level}</p>
         </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
         {(project.tags || []).map((tag) => (
           <span
-            key={`${project.id}-${tag}`}
+            key={`${project.project_id || project.id}-${tag}`}
             className="rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-500"
           >
             {tag}
@@ -63,7 +63,7 @@ function ListProjectCard({ project }) {
       </div>
 
       <Link
-        to={`/applicant/opportunities/${project.id}`}
+        to={`/applicant_dashboard/opportunities/${project.project_id || project.id}`}
         className="mt-5 inline-flex rounded bg-black px-5 py-3 text-sm font-semibold uppercase tracking-wider text-white transition hover:bg-neutral-800"
       >
         View Details
@@ -145,7 +145,7 @@ function SwipeProjectCard({ project, onReject, onApply }) {
         }}
       >
         <header className="rounded-t-[16px] bg-gradient-to-r from-black to-slate-900 p-6 text-white">
-          <h3 className="text-5xl font-bold leading-tight">{project.title}</h3>
+          <h3 className="text-2xl font-bold leading-tight">{project.title}</h3>
           <p className="mt-3 inline-block rounded bg-white/10 px-3 py-1 text-sm text-neutral-200">
             {(project.tags || []).join(', ')}
           </p>
@@ -186,7 +186,7 @@ function SwipeProjectCard({ project, onReject, onApply }) {
           </div>
 
           <Link
-            to={`/applicant/opportunities/${project.id}`}
+            to={`/applicant_dashboard/opportunities/${project.project_id || project.id}`}
             className="inline-flex w-full items-center justify-center rounded-full bg-black px-4 py-3 text-center text-base font-semibold text-white transition hover:bg-neutral-800"
           >
             View Full Details & Apply
@@ -201,10 +201,11 @@ function SwipeProjectCard({ project, onReject, onApply }) {
   )
 }
 
-export default function Opportunities() {
+export default function Opportunities({ publicPreview = false }) {
   const navigate = useNavigate()
   const [filters, setFilters] = React.useState(defaultFilters)
   const [projects, setProjects] = React.useState([])
+  const [hasMore, setHasMore] = React.useState(false)
   const [filterOptions, setFilterOptions] = React.useState({
     departments: [],
     locations: [],
@@ -216,14 +217,22 @@ export default function Opportunities() {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [feedback, setFeedback] = React.useState('')
 
+  const previewLimit = publicPreview ? 6 : null
+
   const refreshProjects = React.useCallback(async () => {
     setLoading(true)
-    const data = await getOpportunities(filters)
-    setProjects(data.projects)
+    const data = await getOpportunities({ ...filters, limit: previewLimit })
+    if (publicPreview && data.projects.length > 5) {
+      setHasMore(true)
+      setProjects(data.projects.slice(0, 5))
+    } else {
+      setHasMore(false)
+      setProjects(data.projects)
+    }
     setFilterOptions(data.filterOptions)
     setSwipeIndex(0)
     setLoading(false)
-  }, [filters])
+  }, [filters, previewLimit, publicPreview])
 
   React.useEffect(() => {
     refreshProjects()
@@ -256,7 +265,7 @@ export default function Opportunities() {
 
     setIsSubmitting(true)
     await submitApplication({
-      projectId: applicationProject.id,
+      projectId: applicationProject.project_id || applicationProject.id,
       coverLetterText: coverLetter,
       coverLetterFile: file,
     })
@@ -268,14 +277,14 @@ export default function Opportunities() {
   return (
     <main>
       <section className="border-b border-neutral-200">
-        <div className="mx-auto w-full max-w-[1200px] px-4 py-12 sm:px-8">
-          <h1 className="text-7xl font-bold tracking-tight text-black">Find Your Research Project</h1>
-          <p className="mt-4 max-w-3xl text-2xl text-neutral-600">
+        <div className="mx-auto w-full max-w-[1100px] px-6 py-10">
+          <h1 className="text-3xl font-bold tracking-tight text-black">Find Your Research Project</h1>
+          <p className="mt-2 max-w-3xl text-neutral-500">
             Search and filter through research projects to find the perfect opportunity for your academic journey.
           </p>
 
-          {viewMode === 'list' && (
-            <label className="mt-10 block">
+          {viewMode === 'list' && !publicPreview && (
+            <label className="mt-6 block">
               <span className="sr-only">Search projects</span>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400" />
@@ -290,7 +299,7 @@ export default function Opportunities() {
             </label>
           )}
 
-          <div className="mt-6 inline-flex rounded-2xl border border-neutral-300 bg-white p-1">
+          {!publicPreview && <div className="mt-6 inline-flex rounded-2xl border border-neutral-300 bg-white p-1">
             <button
               type="button"
               onClick={() => setViewMode('list')}
@@ -315,19 +324,46 @@ export default function Opportunities() {
               <Layers3 className="h-4 w-4" />
               Swipe Mode
             </button>
-          </div>
+          </div>}
 
           {feedback && <p className="mt-4 text-base text-green-700">{feedback}</p>}
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-[1200px] px-4 py-12 sm:px-8">
+      <section className="mx-auto w-full max-w-[1100px] px-6 py-10">
         {loading && <p className="text-base text-neutral-500">Loading projects...</p>}
 
-        {!loading && viewMode === 'list' && (
+        {!loading && viewMode === 'list' && publicPreview && (
+          <div className="space-y-3">
+            {projects.map((project) => (
+              <ListProjectCard key={project.project_id || project.id} project={project} />
+            ))}
+
+            {!projects.length && (
+              <p className="rounded border border-neutral-200 bg-white p-6 text-neutral-600">
+                No open projects available right now.
+              </p>
+            )}
+
+            {hasMore && (
+              <div className="mt-8 rounded border border-neutral-200 bg-neutral-50 p-8 text-center">
+                <p className="text-lg font-semibold text-black">Want to see more projects?</p>
+                <p className="mt-1 text-sm text-neutral-500">Sign up to browse all opportunities and apply directly.</p>
+                <Link
+                  to="/auth/signup"
+                  className="mt-4 inline-flex rounded-full bg-black px-8 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800"
+                >
+                  Sign Up to See More
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!loading && viewMode === 'list' && !publicPreview && (
           <div className="grid gap-5 lg:grid-cols-[290px_1fr]">
             <aside className="h-fit rounded border border-neutral-200 bg-white p-6">
-              <h2 className="text-4xl font-bold text-black">Filters</h2>
+              <h2 className="text-lg font-bold text-black">Filters</h2>
 
               <div className="mt-5 space-y-4">
                 <label className="block text-base text-neutral-700">
@@ -401,7 +437,7 @@ export default function Opportunities() {
 
             <div className="space-y-3">
               {projects.map((project) => (
-                <ListProjectCard key={project.id} project={project} />
+                <ListProjectCard key={project.project_id || project.id} project={project} />
               ))}
 
               {!projects.length && (
@@ -413,7 +449,7 @@ export default function Opportunities() {
           </div>
         )}
 
-        {!loading && viewMode === 'swipe' && (
+        {!loading && viewMode === 'swipe' && !publicPreview && (
           <div className="flex flex-col items-center gap-6 py-10">
             {currentSwipeProject ? (
               <SwipeProjectCard

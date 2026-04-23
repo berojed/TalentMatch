@@ -265,7 +265,7 @@ export default function RoleSignupForm({ role }) {
         </Link>
 
         <header className="mt-10 text-center">
-          <h1 className="text-6xl font-bold tracking-tight text-black">TalentMatch</h1>
+          <Link to="/" className="inline-block text-6xl font-bold tracking-tight text-black hover:underline underline-offset-4 transition">TalentMatch</Link>
           <p className="mt-2 text-2xl text-neutral-600">
             {isStudent ? 'Student Registration' : 'Research Supervisor Registration'}
           </p>

@@ -51,13 +51,13 @@ export default function SupervisorDashboard() {
     recentApplications: [],
   }
 
-  const firstName = profile?.first_name || 'User'
+  const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'User'
 
   return (
     <main className="mx-auto max-w-[1500px] px-6 py-10 sm:px-10">
       {/* Welcome */}
       <h1 className="text-4xl font-bold tracking-tight text-black">
-        Welcome back, {firstName}
+        Welcome back, {fullName}
       </h1>
       <p className="mt-1 text-neutral-500">
         Here&apos;s a summary of your research supervision activity.

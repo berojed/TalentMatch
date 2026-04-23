@@ -24,9 +24,9 @@ export default function Navbar() {
           >
             Sign Up
           </Link>
-          <button className="p-1 text-gray-500 hover:text-black transition-colors">
+          <Link to="/admin" className="p-1 text-gray-500 hover:text-black transition-colors">
             <Shield size={20} />
-          </button>
+          </Link>
         </div>
       </div>
     </header>

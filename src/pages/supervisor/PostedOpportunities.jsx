@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Plus, Pencil, Trash2, Calendar, Users, MapPin } from 'lucide-react'
 import {
@@ -406,24 +406,38 @@ export default function PostedOpportunities() {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [creating, setCreating] = useState(false)
   const [educationLevels, setEducationLevels] = useState([])
+  const debounceRef = useRef(null)
+
+  // Debounce search input 300ms
+  const handleSearchChange = (e) => {
+    const value = e.target.value
+    setSearch(value)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => setDebouncedSearch(value), 300)
+  }
 
   const loadProjects = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await getSupervisorProjects(search)
+      const data = await getSupervisorProjects(debouncedSearch)
       setProjects(data)
     } catch (err) {
       console.error(err)
     } finally {
       setLoading(false)
     }
-  }, [search])
+  }, [debouncedSearch])
 
   useEffect(() => {
     loadProjects()
   }, [loadProjects])
+
+  useEffect(() => {
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [])
 
   useEffect(() => {
     supabase
@@ -459,7 +473,7 @@ export default function PostedOpportunities() {
         <input
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={handleSearchChange}
           placeholder="Search by project title, description, or research area..."
           className="w-full rounded-lg border border-neutral-300 bg-white py-3 pl-11 pr-4 text-sm placeholder-neutral-400 focus:border-black focus:outline-none"
         />

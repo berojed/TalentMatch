@@ -7,6 +7,38 @@ async function getCurrentUser() {
   return user
 }
 
+/**
+ * Central resolver for supervisor identity.
+ *
+ * All supervisor-side queries depend on a single UUID that appears as:
+ *   - auth.users.id
+ *   - public.users.user_id
+ *   - supervisors.user_id
+ *   - projects.supervisor_id
+ *
+ * This function resolves the canonical key once and returns the supervisor
+ * row alongside it, so callers never guess which column to filter on.
+ */
+async function resolveSupervisorContext() {
+  const authUser = await getCurrentUser()
+  if (!authUser) throw new Error('Not authenticated')
+
+  const { data: supervisorRow } = await supabase
+    .from('supervisors')
+    .select('*')
+    .eq('user_id', authUser.id)
+    .maybeSingle()
+
+  return {
+    authUser,
+    supervisorRow,
+    // Canonical key for all ownership filters:
+    // .eq('user_id', key)  on supervisors
+    // .eq('supervisor_id', key)  on projects
+    supervisorKey: authUser.id,
+  }
+}
+
 function normalizeStatus(status) {
   const value = String(status || '').toUpperCase()
   if (!value) return 'SUBMITTED'
@@ -25,22 +57,21 @@ function getApplicantId(application) {
 async function fetchUserEmailMap(applicantIds) {
   if (!applicantIds.length) return {}
 
-  let usersData = null
-
+  // First try direct read (works when user can see the rows via RLS)
   const { data: byUserId, error: byUserIdError } = await supabase
     .from('users')
     .select('user_id, email')
     .in('user_id', applicantIds)
 
-  if (!byUserIdError) {
-    usersData = byUserId || []
-  } else {
-    const { data: byId, error: byIdError } = await supabase
-      .from('users')
-      .select('id, email')
-      .in('id', applicantIds)
-    if (!byIdError) {
-      usersData = byId || []
+  let usersData = !byUserIdError ? byUserId || [] : []
+
+  // If direct read returned no rows (RLS blocked), use the supervisor RPC
+  // which runs as SECURITY DEFINER and checks supervisor ownership
+  if (usersData.length === 0 && applicantIds.length > 0) {
+    const { data: rpcData, error: rpcError } = await supabase
+      .rpc('get_applicant_emails_for_supervisor', { applicant_ids: applicantIds })
+    if (!rpcError && rpcData) {
+      usersData = rpcData
     }
   }
 
@@ -151,10 +182,10 @@ async function enrichApplications(rawApplications) {
   })
 }
 
-async function fetchSupervisorApplicationsByProjectIds(projectIds) {
+async function fetchSupervisorApplicationsByProjectIds(projectIds, { favoritedOnly = false } = {}) {
   if (!projectIds.length) return []
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('applications')
     .select(`
       *,
@@ -163,6 +194,12 @@ async function fetchSupervisorApplicationsByProjectIds(projectIds) {
     .in('project_id', projectIds)
     .order('submitted_at', { ascending: false })
 
+  if (favoritedOnly) {
+    query = query.eq('is_favorited', true)
+  }
+
+  const { data, error } = await query
+
   if (error) throw error
 
   return enrichApplications(data || [])
@@ -170,23 +207,12 @@ async function fetchSupervisorApplicationsByProjectIds(projectIds) {
 
 // ─── Dashboard ────────────────────────────────────────────
 export async function getSupervisorDashboardData() {
-  const user = await getCurrentUser()
-  if (!user) throw new Error('Not authenticated')
+  const { authUser, supervisorRow, supervisorKey } = await resolveSupervisorContext()
 
-  const [
-    { data: profile },
-    { data: projects },
-  ] = await Promise.all([
-    supabase
-      .from('supervisors')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle(),
-    supabase
-      .from('projects')
-      .select('project_id')
-      .eq('supervisor_id', user.id),
-  ])
+  const { data: projects } = await supabase
+    .from('projects')
+    .select('project_id')
+    .eq('supervisor_id', supervisorKey)
 
   const projectIds = (projects || []).map((p) => p.project_id)
 
@@ -201,7 +227,7 @@ export async function getSupervisorDashboardData() {
   const totalApplications = enrichedApplications.length
 
   return {
-    profile: profile || { first_name: user.email?.split('@')[0] || 'User' },
+    profile: supervisorRow || { first_name: authUser.email?.split('@')[0] || 'User', last_name: '' },
     stats: { newApplications, shortlisted, totalApplications },
     recentApplications: enrichedApplications.slice(0, 10),
   }
@@ -209,8 +235,7 @@ export async function getSupervisorDashboardData() {
 
 // ─── Projects ─────────────────────────────────────────────
 export async function getSupervisorProjects(search = '') {
-  const user = await getCurrentUser()
-  if (!user) throw new Error('Not authenticated')
+  const { supervisorKey } = await resolveSupervisorContext()
 
   let query = supabase
     .from('projects')
@@ -219,7 +244,7 @@ export async function getSupervisorProjects(search = '') {
       education_levels ( label ),
       project_fields ( field_id, fields_of_research ( field_name ) )
     `)
-    .eq('supervisor_id', user.id)
+    .eq('supervisor_id', supervisorKey)
     .order('created_at', { ascending: false })
 
   if (search) {
@@ -261,8 +286,7 @@ export async function getSupervisorProjects(search = '') {
 }
 
 export async function createProject(projectData) {
-  const user = await getCurrentUser()
-  if (!user) throw new Error('Not authenticated')
+  const { supervisorKey } = await resolveSupervisorContext()
 
   const { researchAreas, ...rest } = projectData
 
@@ -270,7 +294,7 @@ export async function createProject(projectData) {
     .from('projects')
     .insert({
       ...rest,
-      supervisor_id: user.id,
+      supervisor_id: supervisorKey,
       status: 'OPEN',
     })
     .select()
@@ -357,9 +381,8 @@ async function syncProjectFields(projectId, fieldNames) {
 }
 
 // ─── Applications for a supervisor ─────────────────────────
-export async function getSupervisorApplications(projectId = null) {
-  const user = await getCurrentUser()
-  if (!user) throw new Error('Not authenticated')
+export async function getSupervisorApplications(projectId = null, { favoritedOnly = false } = {}) {
+  const { supervisorKey } = await resolveSupervisorContext()
 
   // Get supervisor's project ids
   let projectIds = []
@@ -369,13 +392,21 @@ export async function getSupervisorApplications(projectId = null) {
     const { data: projects } = await supabase
       .from('projects')
       .select('project_id')
-      .eq('supervisor_id', user.id)
+      .eq('supervisor_id', supervisorKey)
     projectIds = (projects || []).map((p) => p.project_id)
   }
 
   if (projectIds.length === 0) return []
 
-  return fetchSupervisorApplicationsByProjectIds(projectIds)
+  return fetchSupervisorApplicationsByProjectIds(projectIds, { favoritedOnly })
+}
+
+export async function toggleApplicationFavorite(applicationId, nextValue) {
+  const { error } = await supabase
+    .from('applications')
+    .update({ is_favorited: nextValue })
+    .eq('application_id', applicationId)
+  if (error) throw error
 }
 
 export async function updateApplicationStatus(applicationId, status) {
@@ -443,38 +474,28 @@ export async function getProjectById(projectId) {
 
 // ─── Supervisor Profile ─────────────────────────────────────
 export async function getSupervisorProfile() {
-  const user = await getCurrentUser()
-  if (!user) return null
+  const { authUser, supervisorRow, supervisorKey } = await resolveSupervisorContext()
 
-  const [{ data: profile }, { data: userData }] =
-    await Promise.all([
-      supabase
-        .from('supervisors')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle(),
-      supabase
-        .from('users')
-        .select('email, created_at')
-        .eq('user_id', user.id)
-        .maybeSingle(),
-    ])
+  const { data: userData } = await supabase
+    .from('users')
+    .select('email, created_at')
+    .eq('user_id', supervisorKey)
+    .maybeSingle()
 
   return {
-    ...profile,
-    email: userData?.email || user.email,
+    ...supervisorRow,
+    email: userData?.email || authUser.email,
     created_at: userData?.created_at,
   }
 }
 
 export async function updateSupervisorProfile(fields) {
-  const user = await getCurrentUser()
-  if (!user) throw new Error('Not authenticated')
+  const { supervisorKey } = await resolveSupervisorContext()
 
   const { data, error } = await supabase
     .from('supervisors')
     .update(fields)
-    .eq('user_id', user.id)
+    .eq('user_id', supervisorKey)
     .select()
     .single()
 
@@ -530,66 +551,38 @@ export async function getStorageFileUrls(storagePath, defaultBucket = 'applicati
   }
 }
 
-async function getSupervisorCvColumnAndDocumentId(userId) {
-  const candidates = ['cv_document_id', 'document_id']
+async function getSupervisorCvDocument(userId) {
+  // supervisors table has NO cv_document_id column.
+  // Look up the CV directly in the documents table by owner + type + bucket prefix.
+  const { data: doc, error } = await supabase
+    .from('documents')
+    .select('document_id, file_url')
+    .eq('owner_user_id', userId)
+    .eq('doc_type', 'CV')
+    .like('file_url', 'supervisors_cvs/%')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
-  for (const column of candidates) {
-    const { data, error } = await supabase
-      .from('supervisors')
-      .select(column)
-      .eq('user_id', userId)
-      .maybeSingle()
-    if (!error) {
-      return { column, documentId: data?.[column] || null }
-    }
-  }
-
-  return { column: 'cv_document_id', documentId: null }
-}
-
-async function updateSupervisorCvColumn(userId, documentId) {
-  const { column } = await getSupervisorCvColumnAndDocumentId(userId)
-  const { error } = await supabase
-    .from('supervisors')
-    .update({ [column]: documentId })
-    .eq('user_id', userId)
-  if (error) throw error
+  if (error) return null
+  return doc || null
 }
 
 export async function getSupervisorCvFilePath() {
-  const user = await getCurrentUser()
-  if (!user) return null
+  const { supervisorKey } = await resolveSupervisorContext()
 
-  const { documentId } = await getSupervisorCvColumnAndDocumentId(user.id)
-  if (!documentId) return null
-
-  const { data: doc } = await supabase
-    .from('documents')
-    .select('file_url')
-    .eq('document_id', documentId)
-    .maybeSingle()
-
+  const doc = await getSupervisorCvDocument(supervisorKey)
   return doc?.file_url || null
 }
 
 export async function uploadSupervisorCv(file) {
   if (!file) throw new Error('CV file is required.')
 
-  const user = await getCurrentUser()
-  if (!user) throw new Error('Not authenticated')
+  const { supervisorKey } = await resolveSupervisorContext()
 
-  const { documentId: oldDocumentId } = await getSupervisorCvColumnAndDocumentId(user.id)
-  let oldDoc = null
-  if (oldDocumentId) {
-    const { data } = await supabase
-      .from('documents')
-      .select('document_id, file_url')
-      .eq('document_id', oldDocumentId)
-      .maybeSingle()
-    oldDoc = data || null
-  }
+  const oldDoc = await getSupervisorCvDocument(supervisorKey)
 
-  const uploadPath = `${user.id}/${Date.now()}-${file.name}`
+  const uploadPath = `${supervisorKey}/${Date.now()}-${file.name}`
   const docPath = `supervisors_cvs/${uploadPath}`
 
   const { error: uploadError } = await supabase.storage
@@ -600,7 +593,7 @@ export async function uploadSupervisorCv(file) {
   const { data: insertedDoc, error: insertErr } = await supabase
     .from('documents')
     .insert({
-      owner_user_id: user.id,
+      owner_user_id: supervisorKey,
       doc_type: 'CV',
       file_url: docPath,
     })
@@ -608,8 +601,7 @@ export async function uploadSupervisorCv(file) {
     .single()
   if (insertErr) throw insertErr
 
-  await updateSupervisorCvColumn(user.id, insertedDoc.document_id)
-
+  // Clean up old storage file and document row
   if (oldDoc?.file_url) {
     const oldRef = parseStorageReference(oldDoc.file_url, 'supervisors_cvs')
     if (oldRef.path) {
@@ -622,30 +614,19 @@ export async function uploadSupervisorCv(file) {
 }
 
 export async function deleteSupervisorCv() {
-  const user = await getCurrentUser()
-  if (!user) throw new Error('Not authenticated')
+  const { supervisorKey } = await resolveSupervisorContext()
 
-  const { documentId } = await getSupervisorCvColumnAndDocumentId(user.id)
-  if (!documentId) return true
+  const doc = await getSupervisorCvDocument(supervisorKey)
+  if (!doc) return true
 
-  const { data: doc } = await supabase
-    .from('documents')
-    .select('document_id, file_url')
-    .eq('document_id', documentId)
-    .maybeSingle()
-
-  await updateSupervisorCvColumn(user.id, null)
-
-  if (doc?.file_url) {
+  if (doc.file_url) {
     const ref = parseStorageReference(doc.file_url, 'supervisors_cvs')
     if (ref.path) {
       await supabase.storage.from(ref.bucket).remove([ref.path])
     }
   }
 
-  if (doc?.document_id) {
-    await supabase.from('documents').delete().eq('document_id', doc.document_id)
-  }
+  await supabase.from('documents').delete().eq('document_id', doc.document_id)
 
   return true
 }

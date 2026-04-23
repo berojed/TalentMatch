@@ -66,7 +66,7 @@ export default function RoleLogin() {
       return
     }
 
-    navigate(role === 'supervisor' ? '/supervisor' : '/applicant')
+    navigate(role === 'supervisor' ? '/supervisor' : '/applicant_dashboard')
   }
 
   return (
@@ -81,6 +81,7 @@ export default function RoleLogin() {
       </button>
 
       <section className="w-full max-w-md text-center">
+        <Link to="/" className="mb-4 inline-block text-3xl font-bold tracking-tight text-black hover:underline underline-offset-4 transition">TalentMatch</Link>
         <h1 className="text-6xl font-bold tracking-tight text-black">Log In</h1>
         <p className="mt-4 text-3xl text-neutral-700">
           New to this site?{' '}

@@ -14,8 +14,8 @@ import { supabase } from '../../lib/supabase'
 function InfoItem({ label, value, muted }) {
   return (
     <div>
-      <p className="text-lg uppercase tracking-wide text-neutral-500">{label}</p>
-      <p className={`mt-1 text-3xl ${muted ? 'text-neutral-500' : 'text-neutral-800'}`}>{value}</p>
+      <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">{label}</p>
+      <p className={`mt-1 text-sm ${muted ? 'text-neutral-500' : 'text-neutral-800'}`}>{value}</p>
     </div>
   )
 }
@@ -104,30 +104,30 @@ export default function Profile() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
-    navigate('/auth/login')
+    navigate('/')
   }
 
   if (!profile) {
     return (
-      <main className="mx-auto w-full max-w-[1500px] px-4 py-12 sm:px-8">
+      <main className="mx-auto max-w-[1100px] px-6 py-10">
         <p className="text-neutral-600">Loading profile...</p>
       </main>
     )
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1500px] px-4 py-12 sm:px-8">
-      <h1 className="text-7xl font-bold tracking-tight text-black">My Profile</h1>
-      <p className="mt-3 text-2xl text-neutral-600">Manage your account information and preferences.</p>
+    <main className="mx-auto max-w-[1100px] px-6 py-10">
+      <h1 className="text-3xl font-bold tracking-tight text-black">My Profile</h1>
+      <p className="mt-1 text-neutral-500">Manage your account information and preferences.</p>
 
-      {message && <p className="mt-4 text-base text-green-700">{message}</p>}
+      {message && <p className="mt-4 text-sm text-green-700">{message}</p>}
 
-      <div className="mt-8 grid gap-5 lg:grid-cols-[1fr_460px]">
+      <div className="mt-8 grid gap-5 lg:grid-cols-[1fr_320px]">
         <div className="space-y-4">
-          <section className="rounded border border-neutral-200 bg-white p-8">
-            <h2 className="text-5xl font-bold text-black">Account Information</h2>
+          <section className="rounded border border-neutral-200 bg-white p-7">
+            <h2 className="text-lg font-semibold text-black">Account Information</h2>
 
-            <div className="mt-8 grid gap-6 sm:grid-cols-2">
+            <div className="mt-6 grid gap-6 sm:grid-cols-2">
               <InfoItem label="First Name" value={profile.first_name || '-'} />
               <InfoItem label="Last Name" value={profile.last_name || '-'} />
             </div>
@@ -135,7 +135,7 @@ export default function Profile() {
             <div className="mt-6 grid gap-6 sm:grid-cols-2">
               <div>
                 <InfoItem label="Email" value={profile.email || '-'} />
-                <p className="mt-1 text-base text-green-600">Verified</p>
+                <p className="mt-1 text-xs text-green-600">Verified</p>
               </div>
               <InfoItem label="Nickname" value={profile.nickname || '-'} />
             </div>
@@ -152,27 +152,27 @@ export default function Profile() {
             </div>
           </section>
 
-          <section className="rounded border border-neutral-200 bg-white p-8">
+          <section className="rounded border border-neutral-200 bg-white p-7">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-5xl font-bold text-black">Research Preferences</h2>
+              <h2 className="text-lg font-semibold text-black">Research Preferences</h2>
               <button
                 type="button"
                 onClick={() => setEditingPreferences((prev) => !prev)}
-                className="inline-flex items-center gap-2 rounded border border-neutral-300 px-4 py-2 text-base text-neutral-700"
+                className="inline-flex items-center gap-2 rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700"
               >
                 <PenLine className="h-4 w-4" />
                 {editingPreferences ? 'Cancel' : 'Edit'}
               </button>
             </div>
 
-            <div className="mt-6 space-y-4">
-              <label className="block text-lg uppercase tracking-wide text-neutral-500">
+            <div className="mt-5 space-y-4">
+              <label className="block text-xs font-semibold uppercase tracking-widest text-neutral-400">
                 Degree Level
                 <select
                   disabled={!editingPreferences}
                   value={form.degree_level}
                   onChange={(event) => setForm((prev) => ({ ...prev, degree_level: event.target.value }))}
-                  className="mt-2 w-full rounded border border-neutral-300 px-4 py-3 text-2xl text-neutral-700 disabled:bg-neutral-50"
+                  className="mt-1.5 w-full rounded border border-neutral-300 px-3 py-2.5 text-sm text-neutral-700 disabled:bg-neutral-50"
                 >
                   <option value="">Select degree level</option>
                   <option value="Bachelor">Bachelor</option>
@@ -181,7 +181,7 @@ export default function Profile() {
                 </select>
               </label>
 
-              <label className="block text-lg uppercase tracking-wide text-neutral-500">
+              <label className="block text-xs font-semibold uppercase tracking-widest text-neutral-400">
                 Research Interests
                 <textarea
                   disabled={!editingPreferences}
@@ -191,7 +191,7 @@ export default function Profile() {
                   }
                   rows={4}
                   placeholder="Describe your research interests and areas of focus..."
-                  className="mt-2 w-full rounded border border-neutral-300 px-4 py-3 text-2xl text-neutral-700 disabled:bg-neutral-50"
+                  className="mt-1.5 w-full rounded border border-neutral-300 px-3 py-2.5 text-sm text-neutral-700 disabled:bg-neutral-50"
                 />
               </label>
 
@@ -207,26 +207,26 @@ export default function Profile() {
             </div>
           </section>
 
-          <section className="rounded border border-neutral-200 bg-white p-8">
+          <section className="rounded border border-neutral-200 bg-white p-7">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-5xl font-bold text-black">Curriculum Vitae (CV)</h2>
+              <h2 className="text-lg font-semibold text-black">Curriculum Vitae (CV)</h2>
               <button
                 type="button"
                 disabled={cvLoading}
                 onClick={() => cvInputRef.current?.click()}
-                className="inline-flex items-center gap-2 rounded border border-neutral-300 px-4 py-2 text-base text-neutral-700"
+                className="inline-flex items-center gap-2 rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700"
               >
                 <PenLine className="h-4 w-4" />
                 {cvFilePath ? 'Replace' : 'Upload'}
               </button>
             </div>
 
-            <div className="mt-6 flex flex-col justify-between gap-4 rounded border border-neutral-200 bg-neutral-50 p-5 sm:flex-row sm:items-center">
+            <div className="mt-4 flex flex-col justify-between gap-4 rounded border border-neutral-200 bg-neutral-50 p-4 sm:flex-row sm:items-center">
               <div className="flex items-center gap-3">
-                <FileText className="h-8 w-8 text-neutral-700" />
+                <FileText className="h-5 w-5 text-neutral-700" />
                 <div>
-                  <p className="text-3xl text-neutral-800">{cvFileName}</p>
-                  <p className="text-lg text-neutral-500">Last updated: {new Date().toLocaleDateString()}</p>
+                  <p className="text-sm text-neutral-800">{cvFileName}</p>
+                  <p className="text-xs text-neutral-500">Last updated: {new Date().toLocaleDateString()}</p>
                 </div>
               </div>
 
@@ -255,7 +255,7 @@ export default function Profile() {
               </div>
             </div>
 
-            <p className="mt-4 text-xl text-neutral-600">
+            <p className="mt-3 text-xs text-neutral-500">
               Your CV is visible to supervisors when you apply for research opportunities.
             </p>
             <input
@@ -267,13 +267,13 @@ export default function Profile() {
             />
           </section>
 
-          <section className="rounded border border-neutral-200 bg-white p-8">
-            <h2 className="text-5xl font-bold text-black">Account Actions</h2>
+          <section className="rounded border border-neutral-200 bg-white p-7">
+            <h2 className="text-lg font-semibold text-black">Account Actions</h2>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-4 flex flex-wrap gap-3">
               <Link
-                to="/applicant/settings"
-                className="inline-flex items-center gap-2 rounded bg-black px-6 py-3 text-sm font-semibold uppercase tracking-wider text-white"
+                to="/applicant_dashboard/settings"
+                className="inline-flex items-center gap-2 rounded bg-black px-5 py-2 text-sm font-medium text-white"
               >
                 <Settings className="h-4 w-4" />
                 Settings
@@ -281,7 +281,7 @@ export default function Profile() {
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="rounded border border-neutral-300 px-6 py-3 text-base text-neutral-700"
+                className="rounded border border-neutral-300 px-5 py-2 text-sm font-medium text-neutral-700"
               >
                 Sign Out
               </button>
@@ -289,13 +289,21 @@ export default function Profile() {
           </section>
         </div>
 
-        <aside className="h-fit rounded border border-neutral-200 bg-white p-8 lg:sticky lg:top-28">
-          <h2 className="text-5xl font-bold text-black">Profile Picture</h2>
-          <div className="mt-6 flex aspect-square items-center justify-center rounded bg-emerald-800 text-[11rem] lowercase text-white">
-            {profile.first_name?.[0] || 'a'}
-          </div>
-          <p className="mt-4 text-xl text-neutral-600">
-            Profile information is managed through your account.
+        <aside className="h-fit rounded border border-neutral-200 bg-white p-7 lg:sticky lg:top-28">
+          <h2 className="text-lg font-semibold text-black">Profile Picture</h2>
+          {profile.profile_image_url ? (
+            <img
+              src={profile.profile_image_url}
+              alt="Profile"
+              className="mt-4 aspect-square w-full rounded object-cover"
+            />
+          ) : (
+            <div className="mt-4 flex aspect-square items-center justify-center rounded bg-emerald-800 text-6xl lowercase text-white">
+              {profile.first_name?.[0] || 'a'}
+            </div>
+          )}
+          <p className="mt-3 text-xs text-neutral-500">
+            Update your profile picture in Settings.
           </p>
         </aside>
       </div>

@@ -7,6 +7,7 @@ import {
   User2,
   ArrowLeft,
   Users,
+  Languages,
 } from 'lucide-react'
 import { getProjectById } from '../../lib/supervisorApi'
 
@@ -133,6 +134,13 @@ export default function SupervisorProjectDetail() {
                   icon={<User2 className="h-4 w-4" />}
                   label="Supervisor"
                   value={project.supervisor_name}
+                />
+              )}
+              {project.language_required && (
+                <DetailRow
+                  icon={<Languages className="h-4 w-4" />}
+                  label="Language Requirement"
+                  value="German language proficiency required"
                 />
               )}
             </div>
