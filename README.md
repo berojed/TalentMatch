@@ -1,25 +1,25 @@
 # TalentMatch
 
-A web portal connecting students with research supervisors and their projects. Built for a European scientific network.
+A web platform that connects applicants with research supervisors and project opportunities.
 
 ---
 
-## What It Does
+## Use Cases
 
-TalentMatch bridges the gap between students looking for research opportunities and supervisors managing research projects.
+TalentMatch supports the full application lifecycle between applicants and supervisors.
 
-**For students (applicants):**
+**Applicants**
 - Browse and filter open research projects
-- Swipe-mode discovery — drag right to apply, left to skip
+- Use swipe mode to quickly apply or skip opportunities
 - Apply with a cover letter and CV
-- Track application status in real time
+- Track application status across review stages
 
-**For supervisors:**
+**Supervisors**
 - Review incoming applications in list or swipe mode
-- Shortlist, accept, or reject with undo support
-- View applicant CVs via secure signed URLs
-- Dashboard with at-a-glance stats linked to filtered application views
-- Manage a public research profile
+- Shortlist, accept, or reject applications
+- Access applicant CVs through signed URLs
+- Monitor pipeline metrics from dashboard summary cards
+- Maintain and update supervisor profile details
 
 ---
 
@@ -66,12 +66,12 @@ supabase/
 ### Prerequisites
 
 - Node.js 18+
-- A [Supabase](https://supabase.com) project with the schema applied (see `supabase/migrations/`)
+- A [Supabase](https://supabase.com) project with migrations applied from `supabase/migrations/`
 
 ### Steps
 
 ```bash
-# 1. Clone the repo
+# 1. Clone the repository
 git clone https://github.com/your-username/talentmatch.git
 cd talentmatch
 
@@ -80,9 +80,9 @@ npm install
 
 # 3. Configure environment
 cp .env.example .env
-# Edit .env and fill in:
-#   VITE_SUPABASE_URL=https://<your-project>.supabase.co
-#   VITE_SUPABASE_ANON_KEY=<your-anon-key>
+# Set:
+# VITE_SUPABASE_URL=https://<your-project>.supabase.co
+# VITE_SUPABASE_ANON_KEY=<your-anon-key>
 
 # 4. Start the dev server
 npm run dev
@@ -103,7 +103,7 @@ Never commit your `.env` file — it is gitignored by default.
 
 ## Database
 
-The schema is defined across the SQL files in `supabase/migrations/`. Apply them in order to your Supabase project using the Supabase CLI or dashboard.
+Database schema and history are maintained in `supabase/migrations/`. Apply migrations in order using the Supabase CLI or SQL editor.
 
 Key tables: `users`, `roles`, `applicants`, `supervisors`, `projects`, `applications`, `documents`, `fields_of_research`, `education_levels`, `application_reviews`.
 
@@ -112,10 +112,10 @@ Key tables: `users`, `roles`, `applicants`, `supervisors`, `projects`, `applicat
 ## Key Features
 
 - **Role-based auth** — students and supervisors land in separate dashboards after login
-- **Swipe UX** — pointer-event drag gestures for both project discovery (applicant) and application review (supervisor)
-- **CV management** — secure upload, replace, delete, and signed-URL view/download per role
-- **Real-time status** — application status changes with optimistic UI + undo toast
-- **Query-param navigation** — dashboard stat cards deep-link into pre-filtered application views
+- **Swipe UX** — drag-based interactions for applicant project discovery and supervisor review workflows
+- **CV management** — upload, replace, delete, and signed-URL access per role
+- **Application workflow** — status transitions across submitted, review, and final decision states
+- **Dashboard navigation** — summary metrics linked to filtered application views
 
 ---
 
