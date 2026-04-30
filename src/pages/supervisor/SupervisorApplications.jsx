@@ -10,14 +10,10 @@ import {
   GraduationCap,
   Briefcase,
   MapPin,
-  Eye,
-  Download,
 } from 'lucide-react'
 import {
   getSupervisorApplications,
   updateApplicationStatus,
-  getApplicationCvPath,
-  getStorageFileUrls,
 } from '../../lib/supervisorApi'
 
 const STATUS_OPTIONS = [
@@ -392,18 +388,10 @@ function ApplicationRow({ app }) {
 function SwipeView({ filtered, index, setIndex, onStatusSwipe, isMutatingStatus }) {
   const [dragX, setDragX] = useState(0)
   const [dragging, setDragging] = useState(false)
-  const [cvPath, setCvPath] = useState(null)
-  const [cvLoading, setCvLoading] = useState(false)
   const dragState = useRef({ active: false, startX: 0, pointerId: null })
 
   const safeIndex = Math.min(Math.max(index, 0), filtered.length - 1)
   const app = filtered[safeIndex]
-
-  useEffect(() => {
-    if (!app) return
-    setCvPath(null)
-    getApplicationCvPath(app).then(setCvPath)
-  }, [app?.application_id])
 
   if (filtered.length === 0) {
     return (
@@ -423,17 +411,6 @@ function SwipeView({ filtered, index, setIndex, onStatusSwipe, isMutatingStatus 
     day: 'numeric',
     year: 'numeric',
   })
-
-  const handleCvAction = async (mode) => {
-    setCvLoading(true)
-    try {
-      const urls = await getStorageFileUrls(cvPath)
-      const url = mode === 'view' ? urls.viewUrl : urls.downloadUrl
-      if (url) window.open(url, '_blank')
-    } finally {
-      setCvLoading(false)
-    }
-  }
 
   const swipeHint =
     dragX < -50 ? 'REJECT' : dragX > 50 ? 'ACCEPT' : null
@@ -588,29 +565,8 @@ function SwipeView({ filtered, index, setIndex, onStatusSwipe, isMutatingStatus 
               </div>
             )}
 
-            {/* CV actions */}
-            <div className="flex items-center justify-between rounded border border-neutral-200 p-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Curriculum Vitae</p>
-                <p className="text-xs text-neutral-500">{cvPath ? 'PDF document' : 'No CV available'}</p>
-              </div>
-              <div className="flex gap-1.5">
-                <button
-                  disabled={!cvPath || cvLoading}
-                  onClick={() => handleCvAction('view')}
-                  className="flex items-center gap-1 rounded border border-neutral-300 px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 transition disabled:opacity-40"
-                >
-                  <Eye className="h-3.5 w-3.5" /> View
-                </button>
-                <button
-                  disabled={!cvPath || cvLoading}
-                  onClick={() => handleCvAction('download')}
-                  className="flex items-center gap-1 rounded border border-neutral-300 px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 transition disabled:opacity-40"
-                >
-                  <Download className="h-3.5 w-3.5" /> Download
-                </button>
-              </div>
-            </div>
+            {/* Profile snapshot */}
+            <ProfileSnapshot summary={app.applicants?.profile_summary} />
 
             {/* Full review CTA */}
             <Link
@@ -645,6 +601,61 @@ function SwipeView({ filtered, index, setIndex, onStatusSwipe, isMutatingStatus 
           Next <ChevronRight className="h-4 w-4" />
         </button>
       </div>
+    </div>
+  )
+}
+
+function ProfileSnapshot({ summary }) {
+  if (!summary) {
+    return (
+      <div className="rounded border border-neutral-200 p-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
+          Applicant Profile
+        </p>
+        <p className="text-xs text-neutral-500">No profile yet.</p>
+      </div>
+    )
+  }
+
+  const { academic, skills, experience_top, projects_top } = summary
+  const academicLine = [academic?.field_of_study, academic?.graduation_year]
+    .filter(Boolean)
+    .join(' • ')
+  const topExp = experience_top?.[0]
+  const topProject = projects_top?.[0]
+
+  return (
+    <div className="rounded border border-neutral-200 p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
+        Applicant Profile
+      </p>
+      {academicLine && (
+        <p className="mt-1 text-sm text-neutral-700">{academicLine}</p>
+      )}
+      {topExp && (
+        <p className="mt-1 text-xs text-neutral-600 line-clamp-2">
+          <span className="font-semibold">Experience:</span>{' '}
+          {topExp.role}
+          {topExp.organization ? ` @ ${topExp.organization}` : ''}
+        </p>
+      )}
+      {topProject && (
+        <p className="mt-1 text-xs text-neutral-600 line-clamp-2">
+          <span className="font-semibold">Project:</span> {topProject.title}
+        </p>
+      )}
+      {skills && skills.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {skills.slice(0, 6).map((skill, i) => (
+            <span
+              key={i}
+              className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-700"
+            >
+              {skill}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

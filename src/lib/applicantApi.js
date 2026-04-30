@@ -65,6 +65,117 @@ async function withFallback(action, fallback) {
   }
 }
 
+// ─── Applicant profile parse/serialize helpers ──────────────
+// experience text uses the deterministic block format:
+//   Role: ...
+//   Organization: ...
+//   Duration: ...
+//   Description: ...
+// Blocks are separated by a blank line.
+const EXPERIENCE_KEYS = ['role', 'organization', 'duration', 'description']
+const EXPERIENCE_LABELS = {
+  role: 'Role',
+  organization: 'Organization',
+  duration: 'Duration',
+  description: 'Description',
+}
+
+// projects text uses:
+//   Title: ...
+//   Description: ...
+//   Methods/Technologies: ...
+const PROJECT_KEYS = ['title', 'description', 'methods_technologies']
+const PROJECT_LABELS = {
+  title: 'Title',
+  description: 'Description',
+  methods_technologies: 'Methods/Technologies',
+}
+
+function parseBlocks(text, keys, labels) {
+  if (!text || typeof text !== 'string') return []
+  return text
+    .split(/\n\s*\n/)
+    .map((block) => {
+      const row = Object.fromEntries(keys.map((k) => [k, '']))
+      for (const line of block.split('\n')) {
+        for (const key of keys) {
+          const prefix = `${labels[key]}:`
+          if (line.startsWith(prefix)) {
+            row[key] = line.slice(prefix.length).trim()
+            break
+          }
+        }
+      }
+      return row
+    })
+    .filter((row) => keys.some((k) => row[k]))
+}
+
+function serializeBlocks(rows, keys, labels) {
+  return rows
+    .map((row) => keys.map((k) => `${labels[k]}: ${(row[k] || '').trim()}`).join('\n'))
+    .join('\n\n')
+}
+
+export function parseExperienceText(text) {
+  return parseBlocks(text, EXPERIENCE_KEYS, EXPERIENCE_LABELS)
+}
+
+export function serializeExperienceRows(rows) {
+  const cleaned = (rows || [])
+    .map((r) => ({
+      role: (r.role || '').trim(),
+      organization: (r.organization || '').trim(),
+      duration: (r.duration || '').trim(),
+      description: (r.description || '').trim(),
+    }))
+    .filter((r) => r.role || r.organization || r.duration || r.description)
+  return serializeBlocks(cleaned, EXPERIENCE_KEYS, EXPERIENCE_LABELS)
+}
+
+export function parseProjectsText(text) {
+  return parseBlocks(text, PROJECT_KEYS, PROJECT_LABELS)
+}
+
+export function serializeProjectRows(rows) {
+  const cleaned = (rows || [])
+    .map((r) => ({
+      title: (r.title || '').trim(),
+      description: (r.description || '').trim(),
+      methods_technologies: (r.methods_technologies || '').trim(),
+    }))
+    .filter((r) => r.title || r.description || r.methods_technologies)
+  return serializeBlocks(cleaned, PROJECT_KEYS, PROJECT_LABELS)
+}
+
+export function parseSkillsArray(skills) {
+  if (Array.isArray(skills)) return skills.map((s) => String(s)).filter(Boolean)
+  return []
+}
+
+export function parseAwardsText(text) {
+  if (!text) return []
+  return String(text)
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+// Normalize an applicant row into UI-friendly shape with safe defaults.
+export function normalizeApplicantRow(row) {
+  if (!row) return null
+  return {
+    ...row,
+    field_of_study: row.field_of_study || '',
+    graduation_year: row.graduation_year ?? '',
+    experience: row.experience || '',
+    projects: row.projects || '',
+    skills: parseSkillsArray(row.skills),
+    awards: row.awards || '',
+    additional_notes: row.additional_notes || '',
+  }
+}
+
 export async function getFeaturedSupervisors(limit = 6) {
   try {
     const { data: sups, error } = await supabase
@@ -476,7 +587,9 @@ export async function getApplicantProfile() {
     ] = await Promise.all([
       supabase
         .from('applicants')
-        .select('*')
+        .select(
+          'user_id, first_name, last_name, degree_level_id, institution, field_of_study, graduation_year, experience, projects, skills, awards, additional_notes',
+        )
         .eq('user_id', user.id)
         .maybeSingle(),
       supabase
@@ -490,15 +603,19 @@ export async function getApplicantProfile() {
 
     return {
       profile: profile
-        ? { ...profile, email: userData?.email || user.email, created_at: userData?.created_at }
+        ? {
+            ...normalizeApplicantRow(profile),
+            email: userData?.email || user.email,
+            created_at: userData?.created_at,
+          }
         : {
-            ...mockApplicantProfile,
+            ...normalizeApplicantRow(mockApplicantProfile),
             email: userData?.email || user.email || mockApplicantProfile.email,
           },
       settings: mockApplicantSettings,
     }
   }, () => ({
-    profile: mockApplicantProfile,
+    profile: normalizeApplicantRow(mockApplicantProfile),
     settings: mockApplicantSettings,
   }))
 }
@@ -510,25 +627,41 @@ export async function updateApplicantProfile(payload) {
       throw new Error('Not authenticated')
     }
 
-    // Only send columns that exist on the applicants table
-    const allowedKeys = ['first_name', 'last_name', 'degree_level_id', 'interests', 'institution']
+    const allowedKeys = [
+      'first_name',
+      'last_name',
+      'degree_level_id',
+      'institution',
+      'field_of_study',
+      'graduation_year',
+      'experience',
+      'projects',
+      'skills',
+      'awards',
+      'additional_notes',
+    ]
     const filtered = {}
     for (const key of allowedKeys) {
       if (key in payload) filtered[key] = payload[key]
+    }
+    if ('skills' in filtered && !Array.isArray(filtered.skills)) {
+      filtered.skills = parseSkillsArray(filtered.skills)
     }
 
     const { data, error } = await supabase
       .from('applicants')
       .update(filtered)
       .eq('user_id', user.id)
-      .select('*')
+      .select(
+        'user_id, first_name, last_name, degree_level_id, institution, field_of_study, graduation_year, experience, projects, skills, awards, additional_notes',
+      )
       .single()
 
     if (error) {
       throw error
     }
 
-    return data
+    return normalizeApplicantRow(data)
   }, () => ({ ...mockApplicantProfile, ...payload }))
 }
 
@@ -558,193 +691,6 @@ export async function updateApplicantSettings(payload) {
 
     return data
   }, () => ({ ...mockApplicantSettings, ...payload }))
-}
-
-// ─── CV URL helpers ─────────────────────────────────────────
-function parseStorageReference(storagePath, defaultBucket = 'applicants_cvs') {
-  const knownBuckets = ['application-files', 'applicants_cvs', 'supervisors_cvs']
-  if (!storagePath) return { bucket: defaultBucket, path: null }
-
-  let ref = storagePath
-
-  if (/^https?:\/\//i.test(ref)) {
-    const m = ref.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)$/)
-    if (m) return { bucket: m[1], path: m[2] }
-    return { bucket: defaultBucket, path: null }
-  }
-
-  const firstSlash = ref.indexOf('/')
-  if (firstSlash > 0) {
-    const bucketCandidate = ref.slice(0, firstSlash)
-    if (knownBuckets.includes(bucketCandidate)) {
-      return { bucket: bucketCandidate, path: ref.slice(firstSlash + 1) }
-    }
-  }
-
-  return { bucket: defaultBucket, path: ref }
-}
-
-export async function getStorageFileUrls(storagePath, defaultBucket = 'applicants_cvs') {
-  const { bucket, path } = parseStorageReference(storagePath, defaultBucket)
-  if (!path) return { viewUrl: null, downloadUrl: null }
-
-  const { data: viewData, error: viewErr } = await supabase.storage
-    .from(bucket)
-    .createSignedUrl(path, 300)
-
-  const { data: dlData, error: dlErr } = await supabase.storage
-    .from(bucket)
-    .createSignedUrl(path, 300, { download: true })
-
-  return {
-    viewUrl: viewErr ? null : viewData?.signedUrl || null,
-    downloadUrl: dlErr ? null : dlData?.signedUrl || null,
-  }
-}
-
-async function getApplicantCvDocument() {
-  const user = await getCurrentUser()
-  if (!user) throw new Error('Not authenticated')
-
-  const { data: applicant, error: applicantErr } = await supabase
-    .from('applicants')
-    .select('cv_document_id')
-    .eq('user_id', user.id)
-    .maybeSingle()
-  if (applicantErr) throw applicantErr
-
-  if (!applicant?.cv_document_id) return { user, applicant, document: null }
-
-  const { data: doc, error: docErr } = await supabase
-    .from('documents')
-    .select('document_id, file_url')
-    .eq('document_id', applicant.cv_document_id)
-    .maybeSingle()
-  if (docErr) throw docErr
-
-  return { user, applicant, document: doc || null }
-}
-
-export async function uploadApplicantCv(file) {
-  if (!file) throw new Error('CV file is required.')
-
-  const { user, document } = await getApplicantCvDocument()
-  const uploadPath = `${user.id}/${Date.now()}-${file.name}`
-  const docPath = `applicants_cvs/${uploadPath}`
-
-  const { error: uploadError } = await supabase.storage
-    .from('applicants_cvs')
-    .upload(uploadPath, file, { upsert: true })
-  if (uploadError) throw uploadError
-
-  const { data: insertedDoc, error: insertErr } = await supabase
-    .from('documents')
-    .insert({
-      owner_user_id: user.id,
-      doc_type: 'CV',
-      file_url: docPath,
-    })
-    .select('document_id, file_url')
-    .single()
-  if (insertErr) throw insertErr
-
-  const { error: updateErr } = await supabase
-    .from('applicants')
-    .update({ cv_document_id: insertedDoc.document_id })
-    .eq('user_id', user.id)
-  if (updateErr) throw updateErr
-
-  if (document?.file_url) {
-    const oldRef = parseStorageReference(document.file_url, 'applicants_cvs')
-    if (oldRef.path) {
-      await supabase.storage.from(oldRef.bucket).remove([oldRef.path])
-    }
-    await supabase.from('documents').delete().eq('document_id', document.document_id)
-  }
-
-  return insertedDoc.file_url
-}
-
-export async function deleteApplicantCv() {
-  const { user, document } = await getApplicantCvDocument()
-  if (!document) return true
-
-  const { error: updateErr } = await supabase
-    .from('applicants')
-    .update({ cv_document_id: null })
-    .eq('user_id', user.id)
-  if (updateErr) throw updateErr
-
-  const ref = parseStorageReference(document.file_url, 'applicants_cvs')
-  if (ref.path) {
-    await supabase.storage.from(ref.bucket).remove([ref.path])
-  }
-
-  await supabase.from('documents').delete().eq('document_id', document.document_id)
-  return true
-}
-
-export async function getApplicantCvFilePath() {
-  return withFallback(async () => {
-    const user = await getCurrentUser()
-    if (!user) return null
-
-    // Try applicants.cv_document_id -> documents.file_url
-    const { data: applicant } = await supabase
-      .from('applicants')
-      .select('cv_document_id')
-      .eq('user_id', user.id)
-      .maybeSingle()
-
-    if (applicant?.cv_document_id) {
-      const { data: doc } = await supabase
-        .from('documents')
-        .select('file_url')
-        .eq('document_id', applicant.cv_document_id)
-        .maybeSingle()
-      if (doc?.file_url) return doc.file_url
-    }
-
-    // Fallback: latest application with cover_letter_file_path
-    const { data: apps } = await supabase
-      .from('applications')
-      .select('cover_letter_file_path')
-      .or(`applicant_id.eq.${user.id},student_id.eq.${user.id}`)
-      .not('cover_letter_file_path', 'is', null)
-      .order('submitted_at', { ascending: false })
-      .limit(1)
-
-    return apps?.[0]?.cover_letter_file_path
-      ? `application-files/${apps[0].cover_letter_file_path}`
-      : null
-  }, () => null)
-}
-
-// ─── Profile image helpers ──────────────────────────────────
-export async function uploadProfileImage(file) {
-  if (!file) throw new Error('Image file is required.')
-  const user = await getCurrentUser()
-  if (!user) throw new Error('Not authenticated')
-
-  const ext = file.name.split('.').pop()
-  const uploadPath = `${user.id}/${Date.now()}.${ext}`
-
-  const { error: uploadError } = await supabase.storage
-    .from('applicant_avatars')
-    .upload(uploadPath, file, { upsert: true })
-  if (uploadError) throw uploadError
-
-  const { data: { publicUrl } } = supabase.storage
-    .from('applicant_avatars')
-    .getPublicUrl(uploadPath)
-
-  const { error: updateErr } = await supabase
-    .from('applicants')
-    .update({ profile_image_url: publicUrl })
-    .eq('user_id', user.id)
-  if (updateErr) throw updateErr
-
-  return publicUrl
 }
 
 export async function updatePassword(currentPassword, newPassword) {

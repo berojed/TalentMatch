@@ -11,7 +11,6 @@ import {
   getApplicantProfile,
   updateApplicantSettings,
   updatePassword,
-  uploadProfileImage,
 } from '../../lib/applicantApi'
 
 const initialPasswordForm = {
@@ -26,8 +25,6 @@ export default function Settings() {
   const [passwordForm, setPasswordForm] = React.useState(initialPasswordForm)
   const [message, setMessage] = React.useState('')
   const [error, setError] = React.useState('')
-  const [imageLoading, setImageLoading] = React.useState(false)
-  const imageInputRef = React.useRef(null)
 
   React.useEffect(() => {
     getApplicantProfile().then(({ profile: profileData, settings: settingsData }) => {
@@ -72,24 +69,6 @@ export default function Settings() {
     await updatePassword(passwordForm.currentPassword, passwordForm.newPassword)
     setPasswordForm(initialPasswordForm)
     setMessage('Password updated successfully.')
-  }
-
-  const handleImageUpload = async (event) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    setImageLoading(true)
-    setMessage('')
-    setError('')
-    try {
-      const publicUrl = await uploadProfileImage(file)
-      setProfile((prev) => ({ ...prev, profile_image_url: publicUrl }))
-      setMessage('Profile picture updated.')
-    } catch (err) {
-      setError('Image upload failed. Please try again.')
-    } finally {
-      event.target.value = ''
-      setImageLoading(false)
-    }
   }
 
   if (!settings || !profile) {
@@ -390,35 +369,6 @@ export default function Settings() {
               </p>
             </div>
 
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Profile Picture</p>
-              {profile.profile_image_url ? (
-                <img
-                  src={profile.profile_image_url}
-                  alt="Profile"
-                  className="mt-3 aspect-square w-full rounded object-cover"
-                />
-              ) : (
-                <div className="mt-3 flex aspect-square items-center justify-center rounded bg-emerald-800 text-6xl lowercase text-white">
-                  {profile.first_name?.[0] || 'a'}
-                </div>
-              )}
-              <button
-                type="button"
-                disabled={imageLoading}
-                onClick={() => imageInputRef.current?.click()}
-                className="mt-3 w-full rounded border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition disabled:opacity-50"
-              >
-                {imageLoading ? 'Uploading...' : profile.profile_image_url ? 'Change Photo' : 'Upload Photo'}
-              </button>
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                className="hidden"
-                onChange={handleImageUpload}
-              />
-            </div>
           </div>
         </aside>
       </div>

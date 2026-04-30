@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Mail, Bookmark, Eye, Download } from 'lucide-react'
+import { ArrowLeft, Mail, Bookmark } from 'lucide-react'
 import {
   getApplicationById,
   updateApplicationStatus,
-  getApplicationCvPath,
-  getStorageFileUrls,
   toggleApplicationFavorite,
 } from '../../lib/supervisorApi'
 
@@ -32,8 +30,6 @@ export default function ApplicationReview() {
   const [application, setApplication] = useState(null)
   const [loading, setLoading] = useState(true)
   const [deciding, setDeciding] = useState(false)
-  const [cvPath, setCvPath] = useState(null)
-  const [cvLoading, setCvLoading] = useState(false)
   const [favorited, setFavorited] = useState(false)
 
   useEffect(() => {
@@ -43,8 +39,6 @@ export default function ApplicationReview() {
         setApplication(data)
         if (data) {
           setFavorited(data.is_favorited || false)
-          const path = await getApplicationCvPath(data)
-          setCvPath(path)
         }
       } catch (err) {
         console.error(err)
@@ -55,24 +49,13 @@ export default function ApplicationReview() {
     load()
   }, [applicationId])
 
-  const handleCvAction = async (mode) => {
-    setCvLoading(true)
-    try {
-      const urls = await getStorageFileUrls(cvPath)
-      const url = mode === 'view' ? urls.viewUrl : urls.downloadUrl
-      if (url) window.open(url, '_blank')
-    } finally {
-      setCvLoading(false)
-    }
-  }
-
   const handleToggleFavorite = async () => {
     const next = !favorited
     setFavorited(next)
     try {
       await toggleApplicationFavorite(applicationId, next)
     } catch (err) {
-      setFavorited(!next) // rollback
+      setFavorited(!next)
       console.error(err)
     }
   }
@@ -120,6 +103,7 @@ export default function ApplicationReview() {
     message,
   } = application
 
+  const summary = applicants?.profile_summary || null
   const applicantName =
     `${applicants?.first_name || ''} ${applicants?.last_name || ''}`.trim()
   const appliedDate = new Date(submitted_at).toLocaleDateString('en-US', {
@@ -132,7 +116,6 @@ export default function ApplicationReview() {
 
   return (
     <main className="mx-auto max-w-[1100px] px-6 py-10">
-      {/* Back */}
       <Link
         to="/supervisor/applications"
         className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-black mb-6"
@@ -142,7 +125,6 @@ export default function ApplicationReview() {
       </Link>
 
       <div className="flex gap-7 items-start">
-        {/* ── Left: application content ── */}
         <div className="flex-1 min-w-0 space-y-4">
           {/* Applicant header card */}
           <div className="rounded-lg border border-neutral-200 bg-white p-7">
@@ -151,7 +133,7 @@ export default function ApplicationReview() {
                 <h1 className="text-3xl font-bold text-black">{applicantName}</h1>
                 <p className="mt-1 text-sm text-neutral-500">
                   {degree_label ? `${degree_label} Applicant` : 'Applicant'}
-                  {applicants?.institution ? ` \u2022 ${applicants.institution}` : ''}
+                  {applicants?.institution ? ` • ${applicants.institution}` : ''}
                 </p>
 
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-neutral-500">
@@ -207,44 +189,10 @@ export default function ApplicationReview() {
             </div>
           )}
 
-          {/* CV */}
-          <div className="rounded-lg border border-neutral-200 bg-white p-7">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-semibold text-black">Curriculum Vitae</h2>
-                <p className="mt-0.5 text-sm text-neutral-500">PDF document</p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  disabled={!cvPath || cvLoading}
-                  onClick={() => handleCvAction('view')}
-                  className="flex items-center gap-1.5 rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition disabled:opacity-40"
-                >
-                  <Eye className="h-4 w-4" /> View
-                </button>
-                <button
-                  disabled={!cvPath || cvLoading}
-                  onClick={() => handleCvAction('download')}
-                  className="flex items-center gap-1.5 rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition disabled:opacity-40"
-                >
-                  <Download className="h-4 w-4" /> Download
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Research interests / previous experience */}
-          {applicants?.interests && (
-            <div className="rounded-lg border border-neutral-200 bg-white p-7">
-              <h2 className="font-semibold text-black mb-4">Previous Experience</h2>
-              <p className="text-sm leading-relaxed text-neutral-600">
-                {applicants.interests}
-              </p>
-            </div>
-          )}
+          {/* Applicant Profile Summary */}
+          {summary && <ApplicantSummary summary={summary} />}
         </div>
 
-        {/* ── Right: Decision sidebar (sticky) ── */}
         <div className="w-72 shrink-0 sticky top-6">
           <div className="rounded-lg border border-neutral-200 bg-white p-6">
             <h2 className="font-semibold text-black mb-4">Your Decision</h2>
@@ -285,5 +233,126 @@ export default function ApplicationReview() {
         </div>
       </div>
     </main>
+  )
+}
+
+function ApplicantSummary({ summary }) {
+  const { academic, experience_top, projects_top, skills, awards, notes } = summary
+  const hasAcademic = academic.field_of_study || academic.graduation_year
+  const hasExp = experience_top && experience_top.length
+  const hasProjects = projects_top && projects_top.length
+  const hasSkills = skills && skills.length
+  const hasAwards = awards && awards.length
+  const isEmpty = !hasAcademic && !hasExp && !hasProjects && !hasSkills && !hasAwards && !notes
+
+  if (isEmpty) {
+    return (
+      <div className="rounded-lg border border-neutral-200 bg-white p-7">
+        <h2 className="font-semibold text-black mb-2">Applicant Profile</h2>
+        <p className="text-sm text-neutral-500">No profile information provided yet.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-lg border border-neutral-200 bg-white p-7 space-y-5">
+      <h2 className="font-semibold text-black">Applicant Profile</h2>
+
+      {hasAcademic && (
+        <div>
+          <p className="text-xs font-semibold tracking-widest text-neutral-400 uppercase mb-1">
+            Academic
+          </p>
+          <p className="text-sm text-neutral-800">
+            {academic.field_of_study}
+            {academic.graduation_year ? ` • Graduating ${academic.graduation_year}` : ''}
+          </p>
+        </div>
+      )}
+
+      {hasExp && (
+        <div>
+          <p className="text-xs font-semibold tracking-widest text-neutral-400 uppercase mb-2">
+            Experience
+          </p>
+          <div className="space-y-2">
+            {experience_top.map((entry, i) => (
+              <div key={i} className="rounded border border-neutral-100 p-3">
+                <p className="text-sm font-semibold text-black">
+                  {entry.role}
+                  {entry.organization ? ` • ${entry.organization}` : ''}
+                </p>
+                {entry.duration && (
+                  <p className="text-xs text-neutral-500">{entry.duration}</p>
+                )}
+                {entry.description && (
+                  <p className="mt-1 text-sm text-neutral-700">{entry.description}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {hasProjects && (
+        <div>
+          <p className="text-xs font-semibold tracking-widest text-neutral-400 uppercase mb-2">
+            Projects / Research
+          </p>
+          <div className="space-y-2">
+            {projects_top.map((entry, i) => (
+              <div key={i} className="rounded border border-neutral-100 p-3">
+                <p className="text-sm font-semibold text-black">{entry.title}</p>
+                {entry.description && (
+                  <p className="mt-1 text-sm text-neutral-700">{entry.description}</p>
+                )}
+                {entry.methods_technologies && (
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Methods: {entry.methods_technologies}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {hasSkills && (
+        <div>
+          <p className="text-xs font-semibold tracking-widest text-neutral-400 uppercase mb-2">
+            Skills
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {skills.map((skill, i) => (
+              <span key={i} className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-700">
+                {skill}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {hasAwards && (
+        <div>
+          <p className="text-xs font-semibold tracking-widest text-neutral-400 uppercase mb-2">
+            Awards
+          </p>
+          <ul className="list-disc pl-5 text-sm text-neutral-700 space-y-0.5">
+            {awards.map((award, i) => (
+              <li key={i}>{award}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {notes && (
+        <div>
+          <p className="text-xs font-semibold tracking-widest text-neutral-400 uppercase mb-1">
+            Notes
+          </p>
+          <p className="text-sm text-neutral-700 whitespace-pre-wrap">{notes}</p>
+        </div>
+      )}
+    </div>
   )
 }

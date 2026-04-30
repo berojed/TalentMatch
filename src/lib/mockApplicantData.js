@@ -2,13 +2,28 @@ export const mockApplicantProfile = {
   id: 'demo-applicant',
   first_name: 'bernard',
   last_name: 'jedvaj',
-  nickname: 'bernard jedvaj',
   email: 'bernard.jedvaj@gmail.com',
   degree_level: 'PhD',
-  research_interests:
-    'Particle accelerators, medical physics, plasma simulations, nuclear instrumentation',
+  degree_level_id: 3,
+  institution: 'TU Darmstadt',
+  field_of_study: 'Applied Physics',
+  graduation_year: 2024,
+  experience: [
+    'Role: Research Intern',
+    'Organization: GSI Helmholtz Centre',
+    'Duration: Jun 2023 – Sep 2023',
+    'Description: Assisted in beam diagnostics and Geant4 simulations for proton therapy applications.',
+  ].join('\n'),
+  projects: [
+    'Title: Plasma Simulations for Heavy-Ion Beams',
+    'Description: Simulated plasma effects in high-energy density experiments for FAIR.',
+    'Methods/Technologies: Python, MATLAB, Geant4',
+  ].join('\n'),
+  skills: ['Python', 'C++', 'Geant4', 'Data Analysis'],
+  awards: 'DAAD Scholarship 2023',
+  additional_notes:
+    'Looking for a PhD opportunity in nuclear or accelerator physics in Europe.',
   member_since: '2025-12-16',
-  profile_picture_url: '',
 }
 
 export const mockApplicantSettings = {

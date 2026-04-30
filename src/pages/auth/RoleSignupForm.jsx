@@ -2,13 +2,15 @@ import React from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import ApplicantProfileForm from '../../components/applicant/ApplicantProfileForm'
+import SupervisorProfileForm from '../../components/supervisor/SupervisorProfileForm'
 
 const inputClassName =
   'mt-2 w-full rounded border border-neutral-300 px-4 py-3 text-lg text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-500'
 
 const labelClassName = 'block text-base font-medium text-neutral-700'
 
-function StudentFields({ values, onChange }) {
+function StudentBasicFields({ values, onChange }) {
   return (
     <>
       <div className="grid grid-cols-2 gap-3">
@@ -47,42 +49,13 @@ function StudentFields({ values, onChange }) {
           required
           placeholder="your@institution.edu"
           className={inputClassName}
-        />
-      </label>
-
-      <label className={labelClassName}>
-        Degree Level
-        <select
-          name="degreeLevel"
-          value={values.degreeLevel}
-          onChange={onChange}
-          required
-          className={inputClassName}
-        >
-          <option value="">Select degree level</option>
-          <option value="undergraduate">Undergraduate</option>
-          <option value="masters">Master&apos;s</option>
-          <option value="phd">PhD</option>
-          <option value="other">Other</option>
-        </select>
-      </label>
-
-      <label className={labelClassName}>
-        Research Interests
-        <textarea
-          name="researchInterests"
-          value={values.researchInterests}
-          onChange={onChange}
-          placeholder="Describe your research interests..."
-          rows={4}
-          className={`${inputClassName} resize-none`}
         />
       </label>
     </>
   )
 }
 
-function SupervisorFields({ values, onChange }) {
+function SupervisorBasicFields({ values, onChange }) {
   return (
     <>
       <div className="grid grid-cols-2 gap-3">
@@ -120,32 +93,6 @@ function SupervisorFields({ values, onChange }) {
           type="email"
           required
           placeholder="your@institution.edu"
-          className={inputClassName}
-        />
-      </label>
-
-      <label className={labelClassName}>
-        Institution
-        <input
-          name="institution"
-          value={values.institution}
-          onChange={onChange}
-          type="text"
-          required
-          placeholder="University Name"
-          className={inputClassName}
-        />
-      </label>
-
-      <label className={labelClassName}>
-        Department
-        <input
-          name="department"
-          value={values.department}
-          onChange={onChange}
-          type="text"
-          required
-          placeholder="Department Name"
           className={inputClassName}
         />
       </label>
@@ -174,19 +121,21 @@ function SupervisorFields({ values, onChange }) {
 export default function RoleSignupForm({ role }) {
   const isStudent = role === 'student'
 
+  const studentFormRef = React.useRef(null)
+  const supervisorFormRef = React.useRef(null)
+
   const [formValues, setFormValues] = React.useState({
     firstName: '',
     lastName: '',
     email: '',
-    degreeLevel: '',
-    researchInterests: '',
-    institution: '',
-    department: '',
     academicTitle: '',
     password: '',
     confirmPassword: '',
     acceptedTerms: false,
   })
+  // Holds latest payloads built by the shared profile forms.
+  const [studentProfilePayload, setStudentProfilePayload] = React.useState(null)
+  const [supervisorProfilePayload, setSupervisorProfilePayload] = React.useState(null)
   const [error, setError] = React.useState('')
   const [successMessage, setSuccessMessage] = React.useState('')
   const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -199,21 +148,26 @@ export default function RoleSignupForm({ role }) {
     }))
   }
 
-  const handleSubmit = async (event) => {
-    event.preventDefault()
+  const validateBaseFields = () => {
+    if (!formValues.firstName.trim()) return 'First name is required.'
+    if (!formValues.lastName.trim()) return 'Last name is required.'
+    if (!formValues.email.trim()) return 'Email is required.'
+    if (formValues.password !== formValues.confirmPassword) return 'Passwords do not match.'
+    if (formValues.password.length < 6) return 'Password must be at least 6 characters.'
+    if (!formValues.acceptedTerms) {
+      return 'You must agree to the Terms of Service and Privacy Policy.'
+    }
+    return null
+  }
+
+  const completeSignup = async (profilePayload) => {
+    const baseError = validateBaseFields()
+    if (baseError) {
+      setError(baseError)
+      return
+    }
     setError('')
     setSuccessMessage('')
-
-    if (formValues.password !== formValues.confirmPassword) {
-      setError('Passwords do not match.')
-      return
-    }
-
-    if (!formValues.acceptedTerms) {
-      setError('You must agree to the Terms of Service and Privacy Policy.')
-      return
-    }
-
     setIsSubmitting(true)
 
     const metadata = isStudent
@@ -221,24 +175,37 @@ export default function RoleSignupForm({ role }) {
           role,
           first_name: formValues.firstName,
           last_name: formValues.lastName,
-          degree_level: formValues.degreeLevel,
-          research_interests: formValues.researchInterests,
+          degree_level_id: profilePayload.degree_level_id,
+          institution: profilePayload.institution,
+          field_of_study: profilePayload.field_of_study,
+          graduation_year: profilePayload.graduation_year,
+          experience: profilePayload.experience,
+          projects: profilePayload.projects,
+          skills: profilePayload.skills,
+          awards: profilePayload.awards,
+          additional_notes: profilePayload.additional_notes,
         }
       : {
           role,
           first_name: formValues.firstName,
           last_name: formValues.lastName,
-          institution: formValues.institution,
-          department: formValues.department,
           academic_title: formValues.academicTitle,
+          institution: profilePayload.institution,
+          department: profilePayload.department,
+          lab_name: profilePayload.lab_name,
+          research_areas: profilePayload.research_areas,
+          years_experience: profilePayload.years_experience,
+          short_bio: profilePayload.short_bio,
+          past_projects: profilePayload.past_projects,
+          key_achievements: profilePayload.key_achievements,
+          current_project_info: profilePayload.current_project_info,
+          applicant_expectations: profilePayload.applicant_expectations,
         }
 
     const { error: signUpError } = await supabase.auth.signUp({
       email: formValues.email,
       password: formValues.password,
-      options: {
-        data: metadata,
-      },
+      options: { data: metadata },
     })
 
     setIsSubmitting(false)
@@ -252,6 +219,7 @@ export default function RoleSignupForm({ role }) {
       'Account created. Check your email to confirm your address, then sign in.',
     )
   }
+
 
   return (
     <main className="min-h-screen bg-neutral-100 px-4 py-8 sm:px-6">
@@ -274,68 +242,163 @@ export default function RoleSignupForm({ role }) {
         <section className="mt-10 rounded border border-neutral-200 bg-white px-8 py-10 sm:px-10">
           <h2 className="text-5xl font-bold tracking-tight text-black">Create Account</h2>
 
-          <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
-            {isStudent ? (
-              <StudentFields values={formValues} onChange={onChange} />
-            ) : (
-              <SupervisorFields values={formValues} onChange={onChange} />
-            )}
+          {isStudent ? (
+            <div className="mt-8 space-y-6">
+              <div className="space-y-4">
+                <StudentBasicFields values={formValues} onChange={onChange} />
+              </div>
 
-            <label className={labelClassName}>
-              Password
-              <input
-                name="password"
-                value={formValues.password}
-                onChange={onChange}
-                type="password"
-                minLength={6}
-                required
-                className={inputClassName}
-              />
-            </label>
+              <div>
+                <h3 className="text-lg font-semibold text-black mb-3">Profile Details</h3>
+                <ApplicantProfileForm
+                  ref={studentFormRef}
+                  initialValues={studentProfilePayload}
+                  onSubmit={async (payload) => {
+                    setStudentProfilePayload(payload)
+                    await completeSignup(payload)
+                  }}
+                  submitting={isSubmitting}
+                  hideSubmitButton
+                />
+              </div>
 
-            <label className={labelClassName}>
-              Confirm Password
-              <input
-                name="confirmPassword"
-                value={formValues.confirmPassword}
-                onChange={onChange}
-                type="password"
-                minLength={6}
-                required
-                className={inputClassName}
-              />
-            </label>
+              <div className="space-y-4">
+                <label className={labelClassName}>
+                  Password
+                  <input
+                    name="password"
+                    value={formValues.password}
+                    onChange={onChange}
+                    type="password"
+                    minLength={6}
+                    required
+                    className={inputClassName}
+                  />
+                </label>
 
-            <label className="mt-1 flex items-center gap-2 text-base text-neutral-600">
-              <input
-                name="acceptedTerms"
-                type="checkbox"
-                checked={formValues.acceptedTerms}
-                onChange={onChange}
-                className="h-4 w-4"
-              />
-              I agree to the Terms of Service and Privacy Policy
-            </label>
+                <label className={labelClassName}>
+                  Confirm Password
+                  <input
+                    name="confirmPassword"
+                    value={formValues.confirmPassword}
+                    onChange={onChange}
+                    type="password"
+                    minLength={6}
+                    required
+                    className={inputClassName}
+                  />
+                </label>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full rounded-full bg-black px-6 py-4 text-2xl font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-600"
-            >
-              {isSubmitting ? 'Creating Account...' : 'Create Account'}
-            </button>
+                <label className="mt-1 flex items-center gap-2 text-base text-neutral-600">
+                  <input
+                    name="acceptedTerms"
+                    type="checkbox"
+                    checked={formValues.acceptedTerms}
+                    onChange={onChange}
+                    className="h-4 w-4"
+                  />
+                  I agree to the Terms of Service and Privacy Policy
+                </label>
 
-            <p className="pt-1 text-center text-lg text-neutral-500">
-              Already have an account?{' '}
-              <Link to={`/auth/login/${role}`} className="font-medium text-black hover:underline">
-                Sign in
-              </Link>
-            </p>
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => studentFormRef.current?.submit()}
+                  className="w-full rounded bg-black py-3 text-sm font-semibold uppercase tracking-wider text-white disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Creating Account...' : 'Create Account'}
+                </button>
+              </div>
 
-            {error && <p className="text-base text-red-600">{error}</p>}
-            {successMessage && <p className="text-base text-green-700">{successMessage}</p>}
-          </form>
+              <p className="pt-1 text-center text-lg text-neutral-500">
+                Already have an account?{' '}
+                <Link to={`/auth/login/${role}`} className="font-medium text-black hover:underline">
+                  Sign in
+                </Link>
+              </p>
+
+              {error && <p className="text-base text-red-600">{error}</p>}
+              {successMessage && <p className="text-base text-green-700">{successMessage}</p>}
+            </div>
+          ) : (
+            <div className="mt-8 space-y-6">
+              <div className="space-y-4">
+                <SupervisorBasicFields values={formValues} onChange={onChange} />
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-black mb-3">Profile Details</h3>
+                <SupervisorProfileForm
+                  ref={supervisorFormRef}
+                  initialValues={supervisorProfilePayload}
+                  onSubmit={async (payload) => {
+                    setSupervisorProfilePayload(payload)
+                    await completeSignup(payload)
+                  }}
+                  submitting={isSubmitting}
+                  hideSubmitButton
+                />
+              </div>
+
+              <div className="space-y-4">
+                <label className={labelClassName}>
+                  Password
+                  <input
+                    name="password"
+                    value={formValues.password}
+                    onChange={onChange}
+                    type="password"
+                    minLength={6}
+                    required
+                    className={inputClassName}
+                  />
+                </label>
+
+                <label className={labelClassName}>
+                  Confirm Password
+                  <input
+                    name="confirmPassword"
+                    value={formValues.confirmPassword}
+                    onChange={onChange}
+                    type="password"
+                    minLength={6}
+                    required
+                    className={inputClassName}
+                  />
+                </label>
+
+                <label className="mt-1 flex items-center gap-2 text-base text-neutral-600">
+                  <input
+                    name="acceptedTerms"
+                    type="checkbox"
+                    checked={formValues.acceptedTerms}
+                    onChange={onChange}
+                    className="h-4 w-4"
+                  />
+                  I agree to the Terms of Service and Privacy Policy
+                </label>
+
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => supervisorFormRef.current?.submit()}
+                  className="w-full rounded bg-black py-3 text-sm font-semibold uppercase tracking-wider text-white disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Creating Account...' : 'Create Account'}
+                </button>
+              </div>
+
+              <p className="pt-1 text-center text-lg text-neutral-500">
+                Already have an account?{' '}
+                <Link to={`/auth/login/${role}`} className="font-medium text-black hover:underline">
+                  Sign in
+                </Link>
+              </p>
+
+              {error && <p className="text-base text-red-600">{error}</p>}
+              {successMessage && <p className="text-base text-green-700">{successMessage}</p>}
+            </div>
+          )}
         </section>
       </div>
     </main>

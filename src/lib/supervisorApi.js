@@ -25,7 +25,9 @@ async function resolveSupervisorContext() {
 
   const { data: supervisorRow } = await supabase
     .from('supervisors')
-    .select('*')
+    .select(
+      'user_id, first_name, last_name, academic_title, institution, department, is_verified, lab_name, research_areas, years_experience, short_bio, past_projects, key_achievements, current_project_info, applicant_expectations',
+    )
     .eq('user_id', authUser.id)
     .maybeSingle()
 
@@ -36,6 +38,94 @@ async function resolveSupervisorContext() {
     // .eq('user_id', key)  on supervisors
     // .eq('supervisor_id', key)  on projects
     supervisorKey: authUser.id,
+  }
+}
+
+// Normalize a supervisor row into UI-friendly shape with safe defaults.
+export function normalizeSupervisorRow(row) {
+  if (!row) return null
+  return {
+    ...row,
+    lab_name: row.lab_name || '',
+    research_areas: Array.isArray(row.research_areas) ? row.research_areas : [],
+    years_experience: row.years_experience ?? '',
+    short_bio: row.short_bio || '',
+    past_projects: row.past_projects || '',
+    key_achievements: row.key_achievements || '',
+    current_project_info: row.current_project_info || '',
+    applicant_expectations: row.applicant_expectations || '',
+  }
+}
+
+// Parse the deterministic block format used by applicants.experience / applicants.projects.
+function parseApplicantBlocks(text, keys, labels) {
+  if (!text || typeof text !== 'string') return []
+  return text
+    .split(/\n\s*\n/)
+    .map((block) => {
+      const row = Object.fromEntries(keys.map((k) => [k, '']))
+      for (const line of block.split('\n')) {
+        for (const key of keys) {
+          const prefix = `${labels[key]}:`
+          if (line.startsWith(prefix)) {
+            row[key] = line.slice(prefix.length).trim()
+            break
+          }
+        }
+      }
+      return row
+    })
+    .filter((row) => keys.some((k) => row[k]))
+}
+
+const APPLICANT_EXPERIENCE_KEYS = ['role', 'organization', 'duration', 'description']
+const APPLICANT_EXPERIENCE_LABELS = {
+  role: 'Role',
+  organization: 'Organization',
+  duration: 'Duration',
+  description: 'Description',
+}
+const APPLICANT_PROJECT_KEYS = ['title', 'description', 'methods_technologies']
+const APPLICANT_PROJECT_LABELS = {
+  title: 'Title',
+  description: 'Description',
+  methods_technologies: 'Methods/Technologies',
+}
+
+// Compact summary derived from explicit applicant columns, for supervisor-facing surfaces.
+// Keeps the same shape consumed by ApplicationReview.jsx and SupervisorApplications.jsx.
+export function buildApplicantSummary(applicantRow) {
+  const row = applicantRow || {}
+  const experience = parseApplicantBlocks(
+    row.experience,
+    APPLICANT_EXPERIENCE_KEYS,
+    APPLICANT_EXPERIENCE_LABELS,
+  )
+  const projects = parseApplicantBlocks(
+    row.projects,
+    APPLICANT_PROJECT_KEYS,
+    APPLICANT_PROJECT_LABELS,
+  )
+  const skills = Array.isArray(row.skills) ? row.skills.filter(Boolean) : []
+  const awards = row.awards
+    ? String(row.awards)
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : []
+  return {
+    academic: {
+      field_of_study: row.field_of_study || '',
+      graduation_year:
+        row.graduation_year != null && row.graduation_year !== ''
+          ? String(row.graduation_year)
+          : '',
+    },
+    experience_top: experience.slice(0, 3),
+    projects_top: projects.slice(0, 3),
+    skills,
+    awards,
+    notes: row.additional_notes || '',
   }
 }
 
@@ -88,7 +178,9 @@ async function fetchApplicantsMap(applicantIds) {
 
   const { data: normalizedApplicants, error: normalizedError } = await supabase
     .from('applicants')
-    .select('user_id, first_name, last_name, degree_level_id, interests')
+    .select(
+      'user_id, first_name, last_name, degree_level_id, institution, field_of_study, graduation_year, experience, projects, skills, awards, additional_notes',
+    )
     .in('user_id', applicantIds)
 
   if (!normalizedError) {
@@ -98,30 +190,14 @@ async function fetchApplicantsMap(applicantIds) {
         first_name: applicant.first_name || '',
         last_name: applicant.last_name || '',
         degree_level_id: applicant.degree_level_id ?? null,
-        interests: applicant.interests || '',
+        institution: applicant.institution || '',
+        profile_summary: buildApplicantSummary(applicant),
       }
     })
     return map
   }
 
-  const { data: portalApplicants, error: portalError } = await supabase
-    .from('applicant_profiles')
-    .select('id, first_name, last_name, degree_level, research_interests')
-    .in('id', applicantIds)
-
-  if (portalError) return {}
-
-  const map = {}
-  ;(portalApplicants || []).forEach((applicant) => {
-    map[applicant.id] = {
-      first_name: applicant.first_name || '',
-      last_name: applicant.last_name || '',
-      degree_level_id: null,
-      degree_level: applicant.degree_level || '',
-      interests: applicant.research_interests || '',
-    }
-  })
-  return map
+  return {}
 }
 
 async function fetchEducationMap() {
@@ -161,7 +237,7 @@ async function enrichApplications(rawApplications) {
     const applicant = applicantId ? applicantsMap[applicantId] : null
     const degreeLabel = applicant?.degree_level_id
       ? eduMap[applicant.degree_level_id] || ''
-      : applicant?.degree_level || ''
+      : ''
 
     return {
       ...app,
@@ -173,7 +249,8 @@ async function enrichApplications(rawApplications) {
             first_name: applicant.first_name || '',
             last_name: applicant.last_name || '',
             degree_level_id: applicant.degree_level_id ?? null,
-            interests: applicant.interests || '',
+            institution: applicant.institution || '',
+            profile_summary: applicant.profile_summary || buildApplicantSummary(null),
           }
         : null,
       applicant_email: applicantId ? emailMap[applicantId] || '' : '',
@@ -483,7 +560,7 @@ export async function getSupervisorProfile() {
     .maybeSingle()
 
   return {
-    ...supervisorRow,
+    ...normalizeSupervisorRow(supervisorRow),
     email: userData?.email || authUser.email,
     created_at: userData?.created_at,
   }
@@ -492,15 +569,40 @@ export async function getSupervisorProfile() {
 export async function updateSupervisorProfile(fields) {
   const { supervisorKey } = await resolveSupervisorContext()
 
+  const allowedKeys = [
+    'first_name',
+    'last_name',
+    'academic_title',
+    'institution',
+    'department',
+    'lab_name',
+    'research_areas',
+    'years_experience',
+    'short_bio',
+    'past_projects',
+    'key_achievements',
+    'current_project_info',
+    'applicant_expectations',
+  ]
+  const payload = {}
+  for (const key of allowedKeys) {
+    if (key in fields) payload[key] = fields[key]
+  }
+  if ('research_areas' in payload && !Array.isArray(payload.research_areas)) {
+    payload.research_areas = []
+  }
+
   const { data, error } = await supabase
     .from('supervisors')
-    .update(fields)
+    .update(payload)
     .eq('user_id', supervisorKey)
-    .select()
+    .select(
+      'user_id, first_name, last_name, academic_title, institution, department, is_verified, lab_name, research_areas, years_experience, short_bio, past_projects, key_achievements, current_project_info, applicant_expectations',
+    )
     .single()
 
   if (error) throw error
-  return data
+  return normalizeSupervisorRow(data)
 }
 
 export async function updateSupervisorPassword(newPassword) {
@@ -629,45 +731,6 @@ export async function deleteSupervisorCv() {
   await supabase.from('documents').delete().eq('document_id', doc.document_id)
 
   return true
-}
-
-export async function getApplicationCvPath(application) {
-  if (!application) return null
-
-  // 1. Direct cover_letter_file_path on application
-  if (application.cover_letter_file_path) return application.cover_letter_file_path
-
-  // 2. application.cv_document_id -> documents.file_url
-  const cvDocId = application.cv_document_id
-  if (cvDocId) {
-    const { data: doc } = await supabase
-      .from('documents')
-      .select('file_url')
-      .eq('document_id', cvDocId)
-      .maybeSingle()
-    if (doc?.file_url) return doc.file_url
-  }
-
-  // 3. Applicant's cv_document_id -> documents.file_url
-  const applicantId = application.student_id || application.applicant_id
-  if (applicantId) {
-    const { data: applicant } = await supabase
-      .from('applicants')
-      .select('cv_document_id')
-      .eq('user_id', applicantId)
-      .maybeSingle()
-
-    if (applicant?.cv_document_id) {
-      const { data: doc } = await supabase
-        .from('documents')
-        .select('file_url')
-        .eq('document_id', applicant.cv_document_id)
-        .maybeSingle()
-      if (doc?.file_url) return doc.file_url
-    }
-  }
-
-  return null
 }
 
 // ─── Single application detail ─────────────────────────────

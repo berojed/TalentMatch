@@ -1,15 +1,9 @@
 import React from 'react'
-import { FileText, PenLine, Settings } from 'lucide-react'
+import { PenLine, Settings } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
-import {
-  getApplicantProfile,
-  updateApplicantProfile,
-  getApplicantCvFilePath,
-  getStorageFileUrls,
-  uploadApplicantCv,
-  deleteApplicantCv,
-} from '../../lib/applicantApi'
+import { getApplicantProfile, updateApplicantProfile } from '../../lib/applicantApi'
 import { supabase } from '../../lib/supabase'
+import ApplicantProfileForm from '../../components/applicant/ApplicantProfileForm'
 
 function InfoItem({ label, value, muted }) {
   return (
@@ -23,83 +17,27 @@ function InfoItem({ label, value, muted }) {
 export default function Profile() {
   const navigate = useNavigate()
   const [profile, setProfile] = React.useState(null)
-  const [form, setForm] = React.useState({
-    degree_level: '',
-    research_interests: '',
-  })
-  const [editingPreferences, setEditingPreferences] = React.useState(false)
+  const [editing, setEditing] = React.useState(false)
+  const [saving, setSaving] = React.useState(false)
   const [message, setMessage] = React.useState('')
-  const [cvFilePath, setCvFilePath] = React.useState(null)
-  const [cvLoading, setCvLoading] = React.useState(false)
-  const cvInputRef = React.useRef(null)
 
   React.useEffect(() => {
     getApplicantProfile().then(({ profile: profileData }) => {
       setProfile(profileData)
-      setForm({
-        degree_level: profileData.degree_level || '',
-        research_interests: profileData.research_interests || '',
-      })
     })
-    getApplicantCvFilePath().then(setCvFilePath)
   }, [])
 
-  const handleCvView = async () => {
-    setCvLoading(true)
+  const handleSubmit = async (payload) => {
+    setSaving(true)
+    setMessage('')
     try {
-      const { viewUrl } = await getStorageFileUrls(cvFilePath)
-      if (viewUrl) window.open(viewUrl, '_blank')
+      const updated = await updateApplicantProfile(payload)
+      setProfile((prev) => ({ ...prev, ...updated }))
+      setEditing(false)
+      setMessage('Profile updated.')
     } finally {
-      setCvLoading(false)
+      setSaving(false)
     }
-  }
-
-  const handleCvDownload = async () => {
-    setCvLoading(true)
-    try {
-      const { downloadUrl } = await getStorageFileUrls(cvFilePath)
-      if (downloadUrl) window.open(downloadUrl, '_blank')
-    } finally {
-      setCvLoading(false)
-    }
-  }
-
-  const handleCvUpload = async (event) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    setCvLoading(true)
-    try {
-      const uploadedPath = await uploadApplicantCv(file)
-      setCvFilePath(uploadedPath)
-      setMessage('CV uploaded successfully.')
-    } finally {
-      event.target.value = ''
-      setCvLoading(false)
-    }
-  }
-
-  const handleCvDelete = async () => {
-    setCvLoading(true)
-    try {
-      await deleteApplicantCv()
-      setCvFilePath(null)
-      setMessage('CV removed.')
-    } finally {
-      setCvLoading(false)
-    }
-  }
-
-  const cvFileName = cvFilePath ? cvFilePath.split('/').pop() : 'No CV uploaded'
-
-  const savePreferences = async () => {
-    const updated = await updateApplicantProfile({
-      degree_level: form.degree_level,
-      research_interests: form.research_interests,
-    })
-    setProfile((prev) => ({ ...prev, ...updated }))
-    setEditingPreferences(false)
-    setMessage('Profile preferences updated.')
   }
 
   const handleSignOut = async () => {
@@ -122,7 +60,7 @@ export default function Profile() {
 
       {message && <p className="mt-4 text-sm text-green-700">{message}</p>}
 
-      <div className="mt-8 grid gap-5 lg:grid-cols-[1fr_320px]">
+      <div className="mt-8">
         <div className="space-y-4">
           <section className="rounded border border-neutral-200 bg-white p-7">
             <h2 className="text-lg font-semibold text-black">Account Information</h2>
@@ -132,18 +70,15 @@ export default function Profile() {
               <InfoItem label="Last Name" value={profile.last_name || '-'} />
             </div>
 
-            <div className="mt-6 grid gap-6 sm:grid-cols-2">
-              <div>
-                <InfoItem label="Email" value={profile.email || '-'} />
-                <p className="mt-1 text-xs text-green-600">Verified</p>
-              </div>
-              <InfoItem label="Nickname" value={profile.nickname || '-'} />
+            <div className="mt-6">
+              <InfoItem label="Email" value={profile.email || '-'} />
+              <p className="mt-1 text-xs text-green-600">Verified</p>
             </div>
 
             <div className="mt-6">
               <InfoItem
                 label="Member Since"
-                value={new Date(profile.member_since || Date.now()).toLocaleDateString('en-US', {
+                value={new Date(profile.member_since || profile.created_at || Date.now()).toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'long',
                   day: 'numeric',
@@ -154,117 +89,26 @@ export default function Profile() {
 
           <section className="rounded border border-neutral-200 bg-white p-7">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-lg font-semibold text-black">Research Preferences</h2>
+              <h2 className="text-lg font-semibold text-black">Profile Details</h2>
               <button
                 type="button"
-                onClick={() => setEditingPreferences((prev) => !prev)}
+                onClick={() => setEditing((prev) => !prev)}
                 className="inline-flex items-center gap-2 rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700"
               >
                 <PenLine className="h-4 w-4" />
-                {editingPreferences ? 'Cancel' : 'Edit'}
+                {editing ? 'Cancel' : 'Edit'}
               </button>
             </div>
 
-            <div className="mt-5 space-y-4">
-              <label className="block text-xs font-semibold uppercase tracking-widest text-neutral-400">
-                Degree Level
-                <select
-                  disabled={!editingPreferences}
-                  value={form.degree_level}
-                  onChange={(event) => setForm((prev) => ({ ...prev, degree_level: event.target.value }))}
-                  className="mt-1.5 w-full rounded border border-neutral-300 px-3 py-2.5 text-sm text-neutral-700 disabled:bg-neutral-50"
-                >
-                  <option value="">Select degree level</option>
-                  <option value="Bachelor">Bachelor</option>
-                  <option value="Master">Master</option>
-                  <option value="PhD">PhD</option>
-                </select>
-              </label>
-
-              <label className="block text-xs font-semibold uppercase tracking-widest text-neutral-400">
-                Research Interests
-                <textarea
-                  disabled={!editingPreferences}
-                  value={form.research_interests}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, research_interests: event.target.value }))
-                  }
-                  rows={4}
-                  placeholder="Describe your research interests and areas of focus..."
-                  className="mt-1.5 w-full rounded border border-neutral-300 px-3 py-2.5 text-sm text-neutral-700 disabled:bg-neutral-50"
-                />
-              </label>
-
-              {editingPreferences && (
-                <button
-                  type="button"
-                  onClick={savePreferences}
-                  className="rounded bg-black px-6 py-3 text-sm font-semibold uppercase tracking-wider text-white"
-                >
-                  Save Preferences
-                </button>
-              )}
+            <div className="mt-5">
+              <ApplicantProfileForm
+                initialValues={profile}
+                onSubmit={handleSubmit}
+                submitting={saving}
+                disabled={!editing}
+                submitLabel="Save Profile"
+              />
             </div>
-          </section>
-
-          <section className="rounded border border-neutral-200 bg-white p-7">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-lg font-semibold text-black">Curriculum Vitae (CV)</h2>
-              <button
-                type="button"
-                disabled={cvLoading}
-                onClick={() => cvInputRef.current?.click()}
-                className="inline-flex items-center gap-2 rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700"
-              >
-                <PenLine className="h-4 w-4" />
-                {cvFilePath ? 'Replace' : 'Upload'}
-              </button>
-            </div>
-
-            <div className="mt-4 flex flex-col justify-between gap-4 rounded border border-neutral-200 bg-neutral-50 p-4 sm:flex-row sm:items-center">
-              <div className="flex items-center gap-3">
-                <FileText className="h-5 w-5 text-neutral-700" />
-                <div>
-                  <p className="text-sm text-neutral-800">{cvFileName}</p>
-                  <p className="text-xs text-neutral-500">Last updated: {new Date().toLocaleDateString()}</p>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  disabled={!cvFilePath || cvLoading}
-                  onClick={handleCvView}
-                  className="rounded bg-black px-5 py-2 text-white disabled:opacity-40"
-                >
-                  View
-                </button>
-                <button
-                  disabled={!cvFilePath || cvLoading}
-                  onClick={handleCvDownload}
-                  className="rounded border border-neutral-300 px-5 py-2 text-neutral-700 disabled:opacity-40"
-                >
-                  Download
-                </button>
-                <button
-                  disabled={!cvFilePath || cvLoading}
-                  onClick={handleCvDelete}
-                  className="rounded border border-red-200 px-5 py-2 text-red-700 disabled:opacity-40"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-
-            <p className="mt-3 text-xs text-neutral-500">
-              Your CV is visible to supervisors when you apply for research opportunities.
-            </p>
-            <input
-              ref={cvInputRef}
-              type="file"
-              accept=".pdf,application/pdf"
-              className="hidden"
-              onChange={handleCvUpload}
-            />
           </section>
 
           <section className="rounded border border-neutral-200 bg-white p-7">
@@ -288,24 +132,6 @@ export default function Profile() {
             </div>
           </section>
         </div>
-
-        <aside className="h-fit rounded border border-neutral-200 bg-white p-7 lg:sticky lg:top-28">
-          <h2 className="text-lg font-semibold text-black">Profile Picture</h2>
-          {profile.profile_image_url ? (
-            <img
-              src={profile.profile_image_url}
-              alt="Profile"
-              className="mt-4 aspect-square w-full rounded object-cover"
-            />
-          ) : (
-            <div className="mt-4 flex aspect-square items-center justify-center rounded bg-emerald-800 text-6xl lowercase text-white">
-              {profile.first_name?.[0] || 'a'}
-            </div>
-          )}
-          <p className="mt-3 text-xs text-neutral-500">
-            Update your profile picture in Settings.
-          </p>
-        </aside>
       </div>
     </main>
   )
