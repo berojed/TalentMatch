@@ -1,6 +1,18 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Plus, Pencil, Trash2, Calendar, Users, MapPin } from 'lucide-react'
+import {
+  Clock,
+  Eye,
+  FileText,
+  GraduationCap,
+  MapPin,
+  Plus,
+  Search,
+  Settings,
+  Trash2,
+  Users,
+  X,
+} from 'lucide-react'
 import {
   getSupervisorProjects,
   createProject,
@@ -8,6 +20,7 @@ import {
   deleteProject,
 } from '../../lib/supervisorApi'
 import { supabase } from '../../lib/supabase'
+import Badge, { StatusBadge } from '../../components/ui/Badge'
 
 // ─── Inline edit / create form ──────────────────────────────
 function OpportunityForm({ initial, educationLevels, onSave, onCancel }) {
@@ -55,95 +68,71 @@ function OpportunityForm({ initial, educationLevels, onSave, onCancel }) {
     }
   }
 
+  const inputClass =
+    'w-full rounded-sm border border-line bg-card px-3 py-2 text-[13px] outline-none transition-colors focus:border-line-strong'
+  const labelClass =
+    'mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-2'
+
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-lg border border-neutral-200 bg-white p-6"
+      className="rounded-DEFAULT border border-line bg-card p-5"
     >
-      <h3 className="mb-6 text-lg font-bold">
-        {initial ? 'Edit Opportunity' : 'Create Opportunity'}
-      </h3>
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-[15px] font-semibold">
+          {initial ? 'Edit Opportunity' : 'Create New Opportunity'}
+        </h3>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="inline-flex items-center gap-1 rounded-sm px-2 py-1 text-[12px] text-ink-2 transition-colors hover:text-ink"
+        >
+          <X className="h-3 w-3" /> Cancel
+        </button>
+      </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {/* Title */}
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-xs font-semibold tracking-wide text-neutral-500">
-            PROJECT TITLE *
-          </label>
-          <input
-            required
-            value={form.title}
-            onChange={set('title')}
-            className="w-full rounded border border-neutral-300 px-4 py-2.5 text-sm focus:border-black focus:outline-none"
-          />
+          <label className={labelClass}>Project Title *</label>
+          <input required value={form.title} onChange={set('title')} className={inputClass} />
         </div>
-
-        {/* Department */}
         <div>
-          <label className="mb-1 block text-xs font-semibold tracking-wide text-neutral-500">
-            DEPARTMENT *
-          </label>
+          <label className={labelClass}>Department *</label>
           <input
             required
             value={form.department}
             onChange={set('department')}
-            className="w-full rounded border border-neutral-300 px-4 py-2.5 text-sm focus:border-black focus:outline-none"
+            placeholder="e.g. Computer Science"
+            className={inputClass}
           />
         </div>
-      </div>
-
-      {/* Description */}
-      <div className="mt-4">
-        <label className="mb-1 block text-xs font-semibold tracking-wide text-neutral-500">
-          PROJECT DESCRIPTION *
-        </label>
-        <textarea
-          required
-          rows={4}
-          value={form.description}
-          onChange={set('description')}
-          className="w-full rounded border border-neutral-300 px-4 py-2.5 text-sm focus:border-black focus:outline-none"
-        />
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {/* Location */}
         <div>
-          <label className="mb-1 block text-xs font-semibold tracking-wide text-neutral-500">
-            LOCATION *
-          </label>
+          <label className={labelClass}>Location *</label>
           <input
             required
             value={form.location}
             onChange={set('location')}
-            className="w-full rounded border border-neutral-300 px-4 py-2.5 text-sm focus:border-black focus:outline-none"
+            placeholder="e.g. Berlin, Germany"
+            className={inputClass}
           />
         </div>
-
-        {/* Duration */}
         <div>
-          <label className="mb-1 block text-xs font-semibold tracking-wide text-neutral-500">
-            DURATION *
-          </label>
+          <label className={labelClass}>Duration *</label>
           <input
             required
             value={form.duration_text}
             onChange={set('duration_text')}
-            placeholder="e.g. 3-4 years"
-            className="w-full rounded border border-neutral-300 px-4 py-2.5 text-sm focus:border-black focus:outline-none"
+            placeholder="e.g. 3–4 years"
+            className={inputClass}
           />
         </div>
-
-        {/* Education level */}
         <div>
-          <label className="mb-1 block text-xs font-semibold tracking-wide text-neutral-500">
-            EDUCATION LEVEL *
-          </label>
+          <label className={labelClass}>Education Level *</label>
           <select
             required
             value={form.degree_level_id}
             onChange={set('degree_level_id')}
-            className="w-full rounded border border-neutral-300 px-4 py-2.5 text-sm focus:border-black focus:outline-none"
+            className={inputClass}
           >
             <option value="">Select level</option>
             {educationLevels.map((el) => (
@@ -153,99 +142,93 @@ function OpportunityForm({ initial, educationLevels, onSave, onCancel }) {
             ))}
           </select>
         </div>
-
-        {/* Research areas */}
         <div>
-          <label className="mb-1 block text-xs font-semibold tracking-wide text-neutral-500">
-            RESEARCH AREAS
-          </label>
+          <label className={labelClass}>Research Areas</label>
           <input
             value={form.research_areas_text}
             onChange={set('research_areas_text')}
-            placeholder="Comma-separated, e.g. Nuclear Physics, Radiochemistry"
-            className="w-full rounded border border-neutral-300 px-4 py-2.5 text-sm focus:border-black focus:outline-none"
+            placeholder="Comma-separated, e.g. Quantum, Optics"
+            className={inputClass}
           />
         </div>
       </div>
 
-      {/* Special requirements */}
-      <div className="mt-4">
-        <label className="mb-1 block text-xs font-semibold tracking-wide text-neutral-500">
-          SPECIAL REQUIREMENTS
-        </label>
+      <div className="mt-3.5">
+        <label className={labelClass}>Description *</label>
+        <textarea
+          required
+          rows={4}
+          value={form.description}
+          onChange={set('description')}
+          placeholder="Describe the research project, objectives, and expected outcomes..."
+          className={`${inputClass} resize-y`}
+        />
+      </div>
+
+      <div className="mt-3.5">
+        <label className={labelClass}>Special Requirements</label>
         <textarea
           rows={2}
           value={form.special_requirements}
           onChange={set('special_requirements')}
-          className="w-full rounded border border-neutral-300 px-4 py-2.5 text-sm focus:border-black focus:outline-none"
+          className={`${inputClass} resize-y`}
         />
       </div>
 
-      {/* Checkboxes */}
-      <div className="mt-4 flex flex-wrap gap-6">
-        <label className="flex items-center gap-2 text-sm">
+      <div className="mt-3.5 flex flex-wrap gap-5">
+        <label className="flex items-center gap-2 text-[12px]">
           <input
             type="checkbox"
             checked={form.language_required}
             onChange={set('language_required')}
-            className="h-4 w-4 rounded border-neutral-300 accent-blue-600"
+            className="h-3.5 w-3.5 rounded-sm border-line"
           />
-          German language proficiency required
+          German language required
         </label>
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-[12px]">
           <input
             type="checkbox"
             checked={form.is_paid}
             onChange={set('is_paid')}
-            className="h-4 w-4 rounded border-neutral-300 accent-blue-600"
+            className="h-3.5 w-3.5 rounded-sm border-line"
           />
-          This is a paid position
+          Paid position
         </label>
       </div>
 
-      {/* Buttons */}
-      <div className="mt-6 flex gap-3">
+      <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="submit"
           disabled={saving}
-          className="rounded bg-black px-6 py-2.5 text-sm font-semibold tracking-wide text-white transition hover:bg-neutral-800 disabled:opacity-50"
+          className="rounded-sm bg-ink px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-85 disabled:opacity-50"
         >
-          {saving
-            ? 'SAVING...'
-            : initial
-            ? 'SAVE CHANGES'
-            : 'CREATE OPPORTUNITY'}
+          {saving ? 'Saving…' : initial ? 'Save Changes' : 'Create Opportunity'}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded border border-neutral-300 px-6 py-2.5 text-sm font-semibold tracking-wide transition hover:bg-neutral-100"
+          className="rounded-sm border border-line bg-card px-4 py-2 text-[13px] font-medium text-ink transition-colors hover:border-line-strong"
         >
-          CANCEL
+          Cancel
         </button>
       </div>
     </form>
   )
 }
 
-// ─── Project card ───────────────────────────────────────────
-function ProjectCard({ project, educationLevels, onEdit, onDelete, onRefresh }) {
+function MetaItem({ Icon, val }) {
+  if (!val) return null
+  return (
+    <span className="flex items-center gap-1.5 text-[12px] text-ink-2">
+      <Icon className="h-3 w-3 shrink-0" />
+      <span className="truncate">{val}</span>
+    </span>
+  )
+}
+
+function ProjectCard({ project, educationLevels, onRefresh }) {
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-
-  const statusLabel =
-    project.status === 'OPEN'
-      ? 'Active'
-      : project.status === 'CLOSED'
-      ? 'Closed'
-      : 'Draft'
-
-  const statusColor =
-    project.status === 'OPEN'
-      ? 'border-green-200 bg-green-50 text-green-700'
-      : project.status === 'CLOSED'
-      ? 'border-red-200 bg-red-50 text-red-700'
-      : 'border-neutral-200 bg-neutral-100 text-neutral-600'
 
   if (editing) {
     return (
@@ -263,145 +246,112 @@ function ProjectCard({ project, educationLevels, onEdit, onDelete, onRefresh }) 
   }
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white">
-      {/* Top section */}
-      <div className="p-6">
-        <div className="flex items-start justify-between">
-          <h3 className="text-lg font-bold text-black">{project.title}</h3>
-          <div className="ml-4 flex shrink-0 gap-2">
+    <article className="overflow-hidden rounded-DEFAULT border border-line bg-card transition-colors hover:border-line-strong">
+      <div className="px-5 py-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider2 text-ink-3">
+              {project.department || 'Research'}
+            </div>
+            <h3 className="mb-2 text-[15px] font-semibold leading-[1.3]">
+              {project.title}
+            </h3>
+            <div className="flex flex-wrap gap-3.5">
+              <MetaItem Icon={MapPin} val={project.location} />
+              <MetaItem
+                Icon={Clock}
+                val={
+                  project.duration_text ||
+                  (project.duration_weeks ? `${project.duration_weeks} weeks` : null)
+                }
+              />
+              <MetaItem Icon={GraduationCap} val={project.education_label} />
+              <MetaItem
+                Icon={Users}
+                val={`${project.applicant_count || 0} applicant${
+                  project.applicant_count === 1 ? '' : 's'
+                }`}
+              />
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <StatusBadge status={project.status} />
+            <Badge variant={project.is_paid ? 'green' : 'neutral'}>
+              {project.is_paid ? 'Paid' : 'Unpaid'}
+            </Badge>
             <button
+              type="button"
               onClick={() => setEditing(true)}
-              className="rounded p-1.5 text-neutral-400 transition hover:bg-neutral-100 hover:text-black"
               aria-label="Edit"
+              className="flex h-7 w-7 items-center justify-center rounded-sm bg-subtle text-ink-2 transition-colors hover:text-ink"
             >
-              <Pencil className="h-4.5 w-4.5" />
+              <Settings className="h-3.5 w-3.5" />
             </button>
             {confirmDelete ? (
               <div className="flex items-center gap-1">
                 <button
+                  type="button"
                   onClick={async () => {
                     await deleteProject(project.project_id)
                     onRefresh()
                   }}
-                  className="rounded bg-red-600 px-2 py-1 text-xs text-white"
+                  className="rounded-sm bg-danger px-2 py-1 text-[11px] font-medium text-white"
                 >
                   Confirm
                 </button>
                 <button
+                  type="button"
                   onClick={() => setConfirmDelete(false)}
-                  className="rounded border px-2 py-1 text-xs"
+                  className="rounded-sm border border-line bg-card px-2 py-1 text-[11px]"
                 >
                   Cancel
                 </button>
               </div>
             ) : (
               <button
+                type="button"
                 onClick={() => setConfirmDelete(true)}
-                className="rounded p-1.5 text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
                 aria-label="Delete"
+                className="flex h-7 w-7 items-center justify-center rounded-sm border border-danger-border bg-danger-bg text-danger transition-opacity hover:opacity-85"
               >
-                <Trash2 className="h-4.5 w-4.5" />
+                <Trash2 className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
         </div>
 
-        <p className="mt-2 text-sm leading-relaxed text-neutral-600">
-          {project.description}
-        </p>
-
-        {/* Research areas tags */}
-        {project.research_areas && project.research_areas.length > 0 && (
-          <div className="mt-3">
-            <span className="rounded-full border border-neutral-200 px-3 py-1 text-xs text-neutral-600">
-              {project.research_areas.join(', ')}
-            </span>
-          </div>
+        {project.description && (
+          <p className="mt-2.5 line-clamp-2 text-[12px] text-ink-2">{project.description}</p>
         )}
 
-        {/* Badges */}
-        <div className="mt-3 flex flex-wrap gap-2">
-          <span
-            className={`rounded-full border px-3 py-0.5 text-xs font-medium ${statusColor}`}
-          >
-            {statusLabel}
-          </span>
-          {project.education_label && (
-            <span className="rounded-full border border-neutral-200 px-3 py-0.5 text-xs font-medium text-neutral-600">
-              {project.education_label}
-            </span>
-          )}
-          <span
-            className={`rounded-full border px-3 py-0.5 text-xs font-medium ${
-              project.is_paid
-                ? 'border-green-200 bg-green-50 text-green-700'
-                : 'border-red-200 bg-red-50 text-red-700'
-            }`}
-          >
-            {project.is_paid ? 'Paid' : 'Unpaid'}
-          </span>
-        </div>
+        {project.research_areas?.length > 0 && (
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {project.research_areas.map((tag) => (
+              <Badge key={tag}>{tag}</Badge>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Bottom meta */}
-      <div className="grid grid-cols-2 gap-4 border-t border-neutral-100 px-6 py-4 sm:grid-cols-4">
-        <div className="flex items-start gap-2">
-          <Calendar className="mt-0.5 h-4 w-4 text-neutral-400" />
-          <div>
-            <p className="text-xs font-semibold tracking-wide text-neutral-500">
-              DURATION
-            </p>
-            <p className="text-sm text-black">
-              {project.duration_text || `${project.duration_weeks || '—'} weeks`}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-start gap-2">
-          <Users className="mt-0.5 h-4 w-4 text-neutral-400" />
-          <div>
-            <p className="text-xs font-semibold tracking-wide text-neutral-500">
-              APPLICANTS
-            </p>
-            <p className="text-sm text-black">{project.applicant_count}</p>
-          </div>
-        </div>
-        <div className="flex items-start gap-2">
-          <MapPin className="mt-0.5 h-4 w-4 text-neutral-400" />
-          <div>
-            <p className="text-xs font-semibold tracking-wide text-neutral-500">
-              LOCATION
-            </p>
-            <p className="text-sm text-black">{project.location}</p>
-          </div>
-        </div>
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-neutral-500">
-            DEPARTMENT
-          </p>
-          <p className="text-sm text-black">{project.department || '—'}</p>
-        </div>
-      </div>
-
-      {/* Action buttons */}
-      <div className="flex gap-3 border-t border-neutral-100 px-6 py-4">
+      <div className="flex flex-wrap gap-2 border-t border-line px-5 py-2.5">
         <Link
           to={`/supervisor/applications?project=${project.project_id}`}
-          className="rounded bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800"
+          className="inline-flex items-center gap-1.5 rounded-sm border border-line bg-card px-3 py-1.5 text-[12px] font-medium text-ink transition-colors hover:border-line-strong"
         >
-          View Applications
+          <FileText className="h-3 w-3" />
+          View {project.applicant_count || 0} Applications
         </Link>
         <Link
           to={`/supervisor/project/${project.project_id}`}
-          className="rounded border border-neutral-300 px-4 py-2 text-sm font-medium transition hover:bg-neutral-100"
+          className="inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-[12px] text-ink-2 transition-colors hover:text-ink"
         >
-          View Project Details
+          <Eye className="h-3 w-3" /> View Details
         </Link>
       </div>
-    </div>
+    </article>
   )
 }
 
-// ─── Page ───────────────────────────────────────────────────
 export default function PostedOpportunities() {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
@@ -411,7 +361,6 @@ export default function PostedOpportunities() {
   const [educationLevels, setEducationLevels] = useState([])
   const debounceRef = useRef(null)
 
-  // Debounce search input 300ms
   const handleSearchChange = (e) => {
     const value = e.target.value
     setSearch(value)
@@ -436,7 +385,9 @@ export default function PostedOpportunities() {
   }, [loadProjects])
 
   useEffect(() => {
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
   }, [])
 
   useEffect(() => {
@@ -447,41 +398,36 @@ export default function PostedOpportunities() {
   }, [])
 
   return (
-    <main className="mx-auto max-w-[1500px] px-6 py-10 sm:px-10">
-      {/* Header row */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="px-6 py-8 sm:px-9 lg:max-w-[1000px]">
+      <header className="fade-up mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight text-black">
-            Posted Opportunities
-          </h1>
-          <p className="mt-1 text-neutral-500">
+          <h1 className="text-[22px] font-bold tracking-tightish">Posted Opportunities</h1>
+          <p className="mt-1 text-[13px] text-ink-2">
             Manage your research project postings and view applications.
           </p>
         </div>
         <button
+          type="button"
           onClick={() => setCreating(true)}
-          className="flex items-center gap-2 rounded bg-black px-5 py-3 text-sm font-semibold tracking-wide text-white transition hover:bg-neutral-800"
+          className="inline-flex items-center gap-1.5 rounded-sm bg-ink px-3.5 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-85"
         >
-          <Plus className="h-4 w-4" />
-          CREATE OPPORTUNITY
+          <Plus className="h-3.5 w-3.5" /> New Opportunity
         </button>
-      </div>
+      </header>
 
-      {/* Search */}
-      <div className="relative mt-6 max-w-2xl">
-        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+      <div className="fade-up fade-up-1 mb-5 relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-3" />
         <input
           type="text"
           value={search}
           onChange={handleSearchChange}
-          placeholder="Search by project title, description, or research area..."
-          className="w-full rounded-lg border border-neutral-300 bg-white py-3 pl-11 pr-4 text-sm placeholder-neutral-400 focus:border-black focus:outline-none"
+          placeholder="Search opportunities..."
+          className="w-full rounded-sm border border-line bg-card py-2 pl-9 pr-3 text-[13px] outline-none transition-colors focus:border-line-strong"
         />
       </div>
 
-      {/* Create form */}
       {creating && (
-        <div className="mt-6">
+        <div className="fade-up mb-5">
           <OpportunityForm
             initial={null}
             educationLevels={educationLevels}
@@ -495,18 +441,18 @@ export default function PostedOpportunities() {
         </div>
       )}
 
-      {/* Project list */}
-      <div className="mt-8">
+      <div className="fade-up fade-up-2">
         {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-black" />
+          <div className="flex justify-center py-16">
+            <span className="spinner" />
           </div>
         ) : (
           <>
-            <p className="mb-4 text-sm text-neutral-500">
-              {projects.length} {projects.length === 1 ? 'opportunity' : 'opportunities'} posted
-            </p>
-            <div className="flex flex-col gap-6">
+            <div className="mb-2.5 text-[12px] text-ink-3">
+              {projects.length}{' '}
+              {projects.length === 1 ? 'opportunity' : 'opportunities'}
+            </div>
+            <div className="flex flex-col gap-3">
               {projects.map((project) => (
                 <ProjectCard
                   key={project.project_id}
@@ -517,16 +463,14 @@ export default function PostedOpportunities() {
               ))}
             </div>
             {projects.length === 0 && !creating && (
-              <div className="py-20 text-center text-neutral-400">
-                <p className="text-lg">No opportunities posted yet.</p>
-                <p className="mt-1 text-sm">
-                  Click &quot;Create Opportunity&quot; to get started.
-                </p>
+              <div className="rounded-DEFAULT border border-line bg-card px-5 py-12 text-center text-[13px] text-ink-3">
+                No opportunities posted yet. Click <strong>New Opportunity</strong> to get
+                started.
               </div>
             )}
           </>
         )}
       </div>
-    </main>
+    </div>
   )
 }

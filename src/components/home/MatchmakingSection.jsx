@@ -26,11 +26,11 @@ const steps = [
 
 export default function MatchmakingSection() {
   return (
-    <section className="py-28 max-w-screen-xl mx-auto px-6">
-      <div className="grid grid-cols-5 gap-16">
+    <section className="py-16 sm:py-24 lg:py-28 max-w-screen-xl mx-auto px-4 sm:px-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-16">
         {/* Left */}
-        <div className="col-span-2">
-          <h2 className="text-5xl font-black uppercase leading-tight mb-6">
+        <div className="lg:col-span-2">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase leading-tight mb-6">
             Bias-Free<br />Matchmaking
           </h2>
           <div className="w-12 h-1 bg-[#CAFC02] mb-8" />
@@ -41,12 +41,12 @@ export default function MatchmakingSection() {
         </div>
 
         {/* Right – steps */}
-        <div className="col-span-3 divide-y divide-gray-200">
+        <div className="lg:col-span-3 divide-y divide-gray-200">
           {steps.map((step) => {
             const Icon = step.icon
             return (
-              <div key={step.number} className="py-10 flex gap-8 items-start">
-                <span className="text-6xl font-black text-gray-100 leading-none select-none w-20 shrink-0">
+              <div key={step.number} className="py-6 sm:py-10 flex flex-col sm:flex-row gap-3 sm:gap-8 items-start">
+                <span className="text-6xl font-black text-gray-100 leading-none select-none sm:w-20 shrink-0">
                   {step.number}
                 </span>
                 <div className="flex-1">

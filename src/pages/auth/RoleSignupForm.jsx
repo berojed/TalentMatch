@@ -13,7 +13,7 @@ const labelClassName = 'block text-base font-medium text-neutral-700'
 function StudentBasicFields({ values, onChange }) {
   return (
     <>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className={labelClassName}>
           First Name
           <input
@@ -58,7 +58,7 @@ function StudentBasicFields({ values, onChange }) {
 function SupervisorBasicFields({ values, onChange }) {
   return (
     <>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className={labelClassName}>
           First Name
           <input
@@ -233,14 +233,14 @@ export default function RoleSignupForm({ role }) {
         </Link>
 
         <header className="mt-10 text-center">
-          <Link to="/" className="inline-block text-6xl font-bold tracking-tight text-black hover:underline underline-offset-4 transition">TalentMatch</Link>
-          <p className="mt-2 text-2xl text-neutral-600">
+          <Link to="/" className="inline-block text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-black hover:underline underline-offset-4 transition">TalentMatch</Link>
+          <p className="mt-2 text-lg sm:text-xl md:text-2xl text-neutral-600">
             {isStudent ? 'Student Registration' : 'Research Supervisor Registration'}
           </p>
         </header>
 
-        <section className="mt-10 rounded border border-neutral-200 bg-white px-8 py-10 sm:px-10">
-          <h2 className="text-5xl font-bold tracking-tight text-black">Create Account</h2>
+        <section className="mt-10 rounded border border-neutral-200 bg-white px-4 py-6 sm:px-8 sm:py-10">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-black">Create Account</h2>
 
           {isStudent ? (
             <div className="mt-8 space-y-6">

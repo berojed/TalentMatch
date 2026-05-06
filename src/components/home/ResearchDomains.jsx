@@ -26,11 +26,11 @@ const domains = [
 
 export default function ResearchDomains() {
   return (
-    <section className="bg-black py-24">
-      <div className="max-w-screen-xl mx-auto px-6">
+    <section className="bg-black py-16 sm:py-24">
+      <div className="max-w-screen-xl mx-auto px-4 sm:px-6">
         {/* Header */}
-        <div className="flex items-end justify-between mb-2">
-          <h2 className="text-5xl font-black uppercase text-white">Research Domains</h2>
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between mb-2">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase text-white">Research Domains</h2>
           <Link
             to="/areas"
             className="flex items-center gap-2 text-[#CAFC02] text-xs font-bold tracking-[0.2em] uppercase hover:opacity-80 transition-opacity"
@@ -41,13 +41,13 @@ export default function ResearchDomains() {
         <div className="w-full h-px bg-gray-700 mb-12" />
 
         {/* Domain Cards */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {domains.map((domain) => {
             const Icon = domain.icon
             return (
               <div
                 key={domain.name}
-                className="relative h-80 overflow-hidden cursor-pointer group"
+                className="relative h-56 sm:h-72 lg:h-80 overflow-hidden cursor-pointer group"
               >
                 {/* Background image */}
                 <div

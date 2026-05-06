@@ -298,6 +298,12 @@ export async function getSupervisorDashboardData() {
   const newApplications = enrichedApplications.filter(
     (a) => a.status === 'SUBMITTED',
   ).length
+  const underReview = enrichedApplications.filter(
+    (a) => a.status === 'UNDER_REVIEW',
+  ).length
+  const accepted = enrichedApplications.filter(
+    (a) => a.status === 'ACCEPTED',
+  ).length
   const shortlisted = enrichedApplications.filter(
     (a) => a.status === 'SHORTLISTED' || a.status === 'ACCEPTED',
   ).length
@@ -305,7 +311,7 @@ export async function getSupervisorDashboardData() {
 
   return {
     profile: supervisorRow || { first_name: authUser.email?.split('@')[0] || 'User', last_name: '' },
-    stats: { newApplications, shortlisted, totalApplications },
+    stats: { newApplications, underReview, accepted, shortlisted, totalApplications },
     recentApplications: enrichedApplications.slice(0, 10),
   }
 }

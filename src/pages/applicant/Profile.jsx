@@ -47,15 +47,15 @@ export default function Profile() {
 
   if (!profile) {
     return (
-      <main className="mx-auto max-w-[1100px] px-6 py-10">
+      <main className="mx-auto w-full max-w-[1100px] px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
         <p className="text-neutral-600">Loading profile...</p>
       </main>
     )
   }
 
   return (
-    <main className="mx-auto max-w-[1100px] px-6 py-10">
-      <h1 className="text-3xl font-bold tracking-tight text-black">My Profile</h1>
+    <main className="mx-auto w-full max-w-[1100px] px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-black">My Profile</h1>
       <p className="mt-1 text-neutral-500">Manage your account information and preferences.</p>
 
       {message && <p className="mt-4 text-sm text-green-700">{message}</p>}

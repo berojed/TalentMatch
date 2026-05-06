@@ -58,16 +58,16 @@ export default function SupervisorProfile() {
   }
 
   return (
-    <main className="mx-auto max-w-[1100px] px-6 py-10">
-      <h1 className="text-3xl font-bold text-black">My Profile</h1>
+    <main className="mx-auto w-full max-w-[1100px] px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+      <h1 className="text-2xl sm:text-3xl font-bold text-black">My Profile</h1>
       <p className="mt-1 text-neutral-500">
         Manage your account, research information, and supervision activities.
       </p>
 
       {message && <p className="mt-4 text-sm text-green-700">{message}</p>}
 
-      <div className="mt-8 flex gap-6 items-start">
-        <div className="w-56 shrink-0">
+      <div className="mt-8 flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div className="w-full shrink-0 lg:w-56">
           <nav className="rounded-lg border border-neutral-200 bg-white overflow-hidden">
             {TABS.map((tab) => (
               <button
@@ -166,7 +166,7 @@ function AccountInformation({ profile, onSave }) {
 
       {!editing ? (
         <>
-          <div className="grid grid-cols-2 gap-x-10 gap-y-6">
+          <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 sm:gap-x-10 sm:gap-y-6">
             <FieldDisplay label="First Name" value={profile?.first_name} />
             <FieldDisplay label="Last Name" value={profile?.last_name} />
             <FieldDisplay label="Academic Title" value={profile?.academic_title} />
@@ -200,7 +200,7 @@ function AccountInformation({ profile, onSave }) {
         </>
       ) : (
         <div className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FieldInput label="First Name" value={form.first_name} onChange={set('first_name')} />
             <FieldInput label="Last Name" value={form.last_name} onChange={set('last_name')} />
           </div>

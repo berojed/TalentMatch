@@ -1,55 +1,32 @@
 import React from 'react'
-import { ArrowLeft, Clock3, MapPin, UserRound, GraduationCap } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Briefcase,
+  Check,
+  Clock,
+  GraduationCap,
+  MapPin,
+  User,
+} from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ApplicationModal from '../../components/applicant/ApplicationModal'
 import { getProjectDetails, submitApplication } from '../../lib/applicantApi'
+import Badge, { StatusBadge } from '../../components/ui/Badge'
 
-function DetailRow({ icon: Icon, label, value }) {
+function QuickInfoRow({ Icon, label, value }) {
   return (
-    <div className="flex items-start gap-3">
-      <Icon className="mt-0.5 h-4 w-4 text-neutral-700" />
+    <div className="flex items-start gap-2.5">
+      <span className="mt-px flex text-ink-3">
+        <Icon className="h-3.5 w-3.5" />
+      </span>
       <div>
-        <p className="text-xs text-neutral-500">{label}</p>
-        <p className="text-sm font-medium text-neutral-800">{value}</p>
+        <div className="text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-3">
+          {label}
+        </div>
+        <div className="text-[13px] font-medium">{value || '—'}</div>
       </div>
     </div>
-  )
-}
-
-function QuickInfo({ project }) {
-  return (
-    <aside className="h-fit rounded border border-neutral-200 bg-white p-7 lg:sticky lg:top-28">
-      <h2 className="text-lg font-semibold text-black">Quick Info</h2>
-
-      <div className="mt-5 space-y-5">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Research Center</p>
-          <p className="mt-1 text-sm text-neutral-800">{project.research_center}</p>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Department</p>
-          <p className="mt-1 text-sm text-neutral-800">{project.department}</p>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Location</p>
-          <p className="mt-1 text-sm text-neutral-800">{project.location}</p>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Duration</p>
-          <p className="mt-1 text-sm text-neutral-800">{project.duration}</p>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Education Level</p>
-          <p className="mt-1 text-sm text-neutral-800">{project.education_level}</p>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Compensation</p>
-          <p className="mt-1 text-sm text-neutral-800">
-            {project.compensation === 'paid' ? 'Paid' : 'Unpaid'}
-          </p>
-        </div>
-      </div>
-    </aside>
   )
 }
 
@@ -61,27 +38,22 @@ export default function ProjectDetails() {
   const [isModalOpen, setIsModalOpen] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [feedback, setFeedback] = React.useState('')
+  const [applied, setApplied] = React.useState(false)
 
   React.useEffect(() => {
     let mounted = true
-
     getProjectDetails(projectId).then((data) => {
-      if (!mounted) {
-        return
-      }
+      if (!mounted) return
       setProject(data)
       setLoading(false)
     })
-
     return () => {
       mounted = false
     }
   }, [projectId])
 
   const handleSubmit = async ({ coverLetter, file }) => {
-    if (!project) {
-      return
-    }
+    if (!project) return
 
     if (!coverLetter?.trim() && !file) {
       setFeedback('Please provide a cover letter or upload a file before submitting.')
@@ -97,7 +69,8 @@ export default function ProjectDetails() {
         coverLetterFile: file,
       })
       setIsModalOpen(false)
-      setFeedback('Application submitted successfully.')
+      setApplied(true)
+      setFeedback('')
     } catch (err) {
       setFeedback(err?.message || 'Submission failed. Please try again.')
     } finally {
@@ -107,104 +80,138 @@ export default function ProjectDetails() {
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-[1100px] px-6 py-10">
-        <p className="text-neutral-600">Loading project...</p>
-      </main>
+      <div className="px-6 py-8 sm:px-9">
+        <p className="text-[13px] text-ink-3">Loading project…</p>
+      </div>
     )
   }
 
   if (!project) {
     return (
-      <main className="mx-auto max-w-[1100px] px-6 py-10">
-        <p className="text-neutral-700">Project not found.</p>
+      <div className="px-6 py-8 sm:px-9">
+        <p className="text-[13px] text-ink-2">Project not found.</p>
         <button
           type="button"
           onClick={() => navigate('/applicant_dashboard/opportunities')}
-          className="mt-3 rounded border border-neutral-300 px-4 py-2"
+          className="mt-3 rounded-sm border border-line bg-card px-3 py-1.5 text-[12px] hover:border-line-strong"
         >
           Back to Opportunities
         </button>
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className="mx-auto max-w-[1100px] px-6 py-10">
+    <div className="px-6 py-8 sm:px-9 lg:max-w-[960px]">
       <button
         type="button"
         onClick={() => navigate('/applicant_dashboard/opportunities')}
-        className="inline-flex items-center gap-1.5 text-sm text-neutral-500 transition hover:text-black"
+        className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-ink-2 hover:text-ink"
       >
-        <ArrowLeft className="h-5 w-5" />
-        Back to Projects
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to Opportunities
       </button>
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_340px]">
-        <div className="space-y-4">
-          <section className="rounded border border-neutral-200 bg-white p-7">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="fade-up grid grid-cols-1 items-start gap-5 lg:grid-cols-[1fr_280px]">
+        <div className="flex flex-col gap-4">
+          {/* Title card */}
+          <div className="rounded-DEFAULT border border-line bg-card p-5">
+            <div className="mb-3.5 flex items-start justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold leading-tight text-black">{project.title}</h1>
-                <p className="mt-1 text-sm text-neutral-600">{project.department}</p>
+                <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider2 text-ink-3">
+                  {project.department}
+                </div>
+                <h1 className="text-[20px] font-bold leading-[1.3] tracking-tightish">
+                  {project.title}
+                </h1>
               </div>
-              <span className="rounded border border-green-200 bg-green-50 px-3 py-1 text-xs text-green-700">
-                Active
-              </span>
+              <div className="flex shrink-0 gap-2">
+                <StatusBadge status="OPEN" />
+                <Badge variant={project.compensation === 'paid' ? 'green' : 'neutral'}>
+                  {project.compensation === 'paid' ? 'Paid' : 'Unpaid'}
+                </Badge>
+              </div>
             </div>
-            <p className="mt-4 text-sm leading-relaxed text-neutral-700">{project.summary}</p>
-          </section>
+            <p className="text-[13px] leading-[1.7] text-ink-2">{project.summary}</p>
+          </div>
 
-          <section className="rounded border border-neutral-200 bg-white p-7">
-            <h2 className="text-lg font-semibold text-black">Project Details</h2>
-            <span className="mt-3 inline-block rounded bg-neutral-100 px-3 py-1 text-xs text-neutral-600">
-              {project.compensation === 'paid' ? 'Paid Position' : 'Unpaid Position'}
-            </span>
-
-            <div className="mt-6 space-y-4">
-              <DetailRow icon={MapPin} label="Location" value={project.location} />
-              <DetailRow icon={Clock3} label="Duration" value={project.duration} />
-              <DetailRow icon={GraduationCap} label="Education Level" value={project.education_level} />
-              <DetailRow icon={UserRound} label="Supervisor" value={project.supervisor_name} />
+          {/* Research areas */}
+          {(project.tags || []).length > 0 && (
+            <div className="rounded-DEFAULT border border-line bg-card p-5">
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-wider2 text-ink-3">
+                Research Areas
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {project.tags.map((tag) => (
+                  <Badge key={tag}>{tag}</Badge>
+                ))}
+              </div>
             </div>
-          </section>
+          )}
 
-          <section className="rounded border border-neutral-200 bg-white p-7">
-            <h2 className="text-lg font-semibold text-black">Research Areas</h2>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {(project.tags || []).map((tag) => (
-                <span key={tag} className="rounded bg-neutral-100 px-2.5 py-1 text-xs text-neutral-600">
-                  {tag}
-                </span>
-              ))}
+          {/* Requirements */}
+          {project.requirements && (
+            <div className="rounded-DEFAULT border border-line bg-card p-5">
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-wider2 text-ink-3">
+                Special Requirements
+              </div>
+              <p className="text-[13px] leading-[1.7] text-ink-2">{project.requirements}</p>
             </div>
-          </section>
+          )}
 
-          <section className="rounded border border-neutral-200 bg-white p-7">
-            <h2 className="text-lg font-semibold text-black">Special Requirements</h2>
-            <p className="mt-3 text-sm leading-relaxed text-neutral-700">{project.requirements}</p>
-          </section>
-
-          <section className="rounded border border-neutral-200 bg-white p-7">
-            <h2 className="text-lg font-semibold text-black">Ready to Apply?</h2>
-            <p className="mt-3 text-sm leading-relaxed text-neutral-700">
-              Submit your application to express your interest in this research project. We&apos;ll review your qualifications and get back to you soon.
-            </p>
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(true)}
-              className="mt-4 rounded bg-black px-6 py-2.5 text-sm font-medium text-white transition hover:bg-neutral-800"
-            >
-              Submit an Application
-            </button>
-            {feedback && (
-              <p className={`mt-4 text-base ${feedback.includes('success') ? 'text-green-700' : 'text-red-600'}`}>
-                {feedback}
+          {/* Apply CTA */}
+          {applied ? (
+            <div className="rounded-DEFAULT border border-ok-border bg-ok-bg p-5">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ok">
+                  <Check className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <div className="text-[14px] font-semibold text-ok">Application Submitted!</div>
+                  <div className="text-[12px] text-ok/75">
+                    The supervisor will review your application soon.
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-DEFAULT border border-line bg-card p-5">
+              <div className="mb-1.5 text-[14px] font-semibold">Ready to Apply?</div>
+              <p className="mb-4 text-[13px] text-ink-2">
+                Submit your cover letter to express interest in this research position.
               </p>
-            )}
-          </section>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-sm bg-ink px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-85"
+              >
+                Submit Application <ArrowRight className="h-3 w-3" />
+              </button>
+              {feedback && (
+                <p className="mt-3 text-[12px] text-danger">{feedback}</p>
+              )}
+            </div>
+          )}
         </div>
 
-        <QuickInfo project={project} />
+        {/* Quick Info sidebar */}
+        <aside className="lg:sticky lg:top-6">
+          <div className="rounded-DEFAULT border border-line bg-card p-5">
+            <div className="mb-4 text-[11px] font-semibold uppercase tracking-wider2 text-ink-3">
+              Quick Info
+            </div>
+            <div className="flex flex-col gap-3.5">
+              <QuickInfoRow Icon={User} label="Supervisor" value={project.supervisor_name} />
+              <QuickInfoRow Icon={MapPin} label="Location" value={project.location} />
+              <QuickInfoRow Icon={Clock} label="Duration" value={project.duration} />
+              <QuickInfoRow
+                Icon={GraduationCap}
+                label="Level"
+                value={project.education_level}
+              />
+              <QuickInfoRow Icon={Briefcase} label="Department" value={project.department} />
+            </div>
+          </div>
+        </aside>
       </div>
 
       <ApplicationModal
@@ -214,6 +221,6 @@ export default function ProjectDetails() {
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleSubmit}
       />
-    </main>
+    </div>
   )
 }

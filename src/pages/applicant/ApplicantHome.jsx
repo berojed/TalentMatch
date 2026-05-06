@@ -1,77 +1,75 @@
 import React from 'react'
-import { BookOpenText, Search, UsersRound, Clock3, MapPin, Microscope, UserRound, FolderOpen } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { getApplicantDashboardData } from '../../lib/applicantApi'
+import { ChevronRight, Eye, MapPin } from 'lucide-react'
+import { getApplicantDashboardData, getApplications } from '../../lib/applicantApi'
+import StatCard from '../../components/ui/StatCard'
+import Badge, { StatusBadge } from '../../components/ui/Badge'
 
-function StatCard({ title, value, description, icon: Icon }) {
+function formatSubmitted(value) {
+  if (!value) return ''
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function ApplicationRow({ app, isFirst }) {
+  const project = app.projects || {}
   return (
-    <article className="rounded border border-neutral-200 bg-white p-6">
-      <div className="mb-4 flex items-start justify-between">
-        <p className="text-sm uppercase tracking-wide text-neutral-500">{title}</p>
-        <span className="rounded-full bg-neutral-100 p-2 text-neutral-700">
-          <Icon className="h-5 w-5" />
-        </span>
+    <div
+      className={[
+        'flex items-center justify-between gap-3 px-4 py-3.5 sm:px-5',
+        isFirst ? '' : 'border-t border-line',
+      ].join(' ')}
+    >
+      <div className="min-w-0">
+        <div className="truncate text-[13px] font-medium text-ink">
+          {project.title || app.project_title || 'Untitled project'}
+        </div>
+        <div className="mt-0.5 flex items-center gap-2 text-[11px] text-ink-3">
+          {project.department && <span>{project.department}</span>}
+          {project.department && app.submitted_at && <span>•</span>}
+          {app.submitted_at && <span>{formatSubmitted(app.submitted_at)}</span>}
+        </div>
       </div>
-      <p className="text-3xl font-bold text-black">{value}</p>
-      <p className="mt-1 text-sm text-neutral-500">{description}</p>
-    </article>
+      <div className="flex shrink-0 items-center gap-2.5">
+        <StatusBadge status={app.status} />
+        <Link
+          to="/applicant_dashboard/applications"
+          className="inline-flex items-center gap-1 rounded-sm px-2 py-1 text-[12px] text-ink-2 transition-colors hover:text-ink"
+        >
+          <Eye className="h-3.5 w-3.5" /> Review
+        </Link>
+      </div>
+    </div>
   )
 }
 
-function ProjectCard({ project }) {
+function ProjectMiniCard({ project }) {
+  const tags = project.tags || []
+  const compensation = project.is_paid ? 'Paid' : 'Unpaid'
   return (
-    <article className="rounded border border-neutral-200 bg-white p-6">
-      <p className="mb-4 inline-block bg-neutral-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-600">
-        {project.department}
-      </p>
-      <h3 className="text-lg font-bold leading-tight text-black">{project.title}</h3>
-
-      <ul className="mt-4 space-y-2 text-sm text-neutral-500">
-        <li className="flex items-center gap-2">
-          <Clock3 className="h-4 w-4" />
-          {project.duration}
-        </li>
-        <li className="flex items-center gap-2">
-          <MapPin className="h-4 w-4" />
-          {project.location}
-        </li>
-        <li className="flex items-center gap-2">
-          <Microscope className="h-4 w-4" />
-          {(project.tags || []).join(', ')}
-        </li>
-        {project.supervisor_name && (
-          <li className="flex items-center gap-2">
-            <UserRound className="h-4 w-4" />
-            {project.supervisor_name}
-          </li>
-        )}
-      </ul>
-
-      <Link
-        to={`/applicant_dashboard/opportunities/${project.id}`}
-        className="mt-5 inline-flex rounded bg-black px-5 py-3 text-sm font-semibold uppercase tracking-wider text-white transition hover:bg-neutral-800"
-      >
-        View Details
-      </Link>
-    </article>
-  )
-}
-
-function SupervisorCard({ supervisor }) {
-  return (
-    <article className="rounded border border-neutral-200 bg-white p-6">
-      <p className="mb-4 inline-block bg-neutral-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-600">
-        {supervisor.domain}
-      </p>
-      <h3 className="text-lg font-bold text-black">{supervisor.name}</h3>
-      <p className="mt-1 text-sm text-neutral-500">{supervisor.title}</p>
-      {supervisor.projectTitle && (
-        <p className="mt-4 flex items-center gap-2 text-sm text-neutral-500">
-          <FolderOpen className="h-4 w-4" />
-          {supervisor.projectTitle}
-        </p>
-      )}
-    </article>
+    <Link
+      to={`/applicant_dashboard/opportunities/${project.id}`}
+      className="block rounded-DEFAULT border border-line bg-card p-4 transition-all hover:border-line-strong hover:shadow-card"
+    >
+      <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider2 text-ink-3">
+        {project.department || 'Research'}
+      </div>
+      <div className="mb-2.5 line-clamp-2 text-[13px] font-semibold leading-[1.4] text-ink">
+        {project.title}
+      </div>
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {tags.slice(0, 2).map((t) => (
+          <Badge key={t}>{t}</Badge>
+        ))}
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="flex items-center gap-1 text-[11px] text-ink-3">
+          <MapPin className="h-3 w-3" /> {project.location || '—'}
+        </span>
+        <Badge variant={project.is_paid ? 'green' : 'neutral'}>{compensation}</Badge>
+      </div>
+    </Link>
   )
 }
 
@@ -79,97 +77,110 @@ export default function ApplicantHome() {
   const [state, setState] = React.useState({
     loading: true,
     profile: null,
-    stats: {
-      totalApplications: 0,
-      inReview: 0,
-      accepted: 0,
-    },
+    stats: { totalApplications: 0, inReview: 0, accepted: 0 },
     recommendedProjects: [],
-    featuredSupervisors: [],
+    recentApplications: [],
   })
 
   React.useEffect(() => {
     let mounted = true
-
-    getApplicantDashboardData().then((data) => {
-      if (!mounted) {
-        return
-      }
-
-      setState({
-        loading: false,
-        profile: data.profile,
-        stats: data.stats,
-        recommendedProjects: data.recommendedProjects,
-        featuredSupervisors: data.featuredSupervisors,
+    Promise.all([getApplicantDashboardData(), getApplications('all')])
+      .then(([dashboard, apps]) => {
+        if (!mounted) return
+        setState({
+          loading: false,
+          profile: dashboard.profile,
+          stats: dashboard.stats,
+          recommendedProjects: dashboard.recommendedProjects || [],
+          recentApplications: (apps || []).slice(0, 3),
+        })
       })
-    })
-
+      .catch(() => {
+        if (mounted) setState((prev) => ({ ...prev, loading: false }))
+      })
     return () => {
       mounted = false
     }
   }, [])
 
+  const firstName = state.profile?.first_name || 'there'
+
   return (
-    <main className="mx-auto max-w-[1100px] px-6 py-10">
-      <section>
-        <h1 className="text-3xl font-bold tracking-tight text-black">
-          Welcome back, {state.profile?.first_name || 'Applicant'}
-        </h1>
-        <p className="mt-1 text-neutral-500">Quick overview of your research journey.</p>
+    <div className="px-6 py-8 sm:px-9 lg:max-w-[1000px]">
+      <header className="fade-up mb-8">
+        <h1 className="text-[22px] font-bold tracking-tightish">Welcome back, {firstName}</h1>
+        <p className="mt-1 text-[13px] text-ink-2">
+          Here&apos;s an overview of your research journey.
+        </p>
+      </header>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          <StatCard
-            title="Total Applications"
-            value={state.stats.totalApplications}
-            description="Active and submitted applications"
-            icon={BookOpenText}
-          />
-          <StatCard
-            title="In Review"
-            value={state.stats.inReview}
-            description="Awaiting supervisor feedback"
-            icon={Search}
-          />
-          <StatCard
-            title="Accepted"
-            value={state.stats.accepted}
-            description="Ready to start your research"
-            icon={UsersRound}
-          />
-        </div>
+      <section className="fade-up fade-up-1 mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatCard
+          label="Total Applications"
+          value={state.stats.totalApplications}
+          sub="Active & submitted"
+        />
+        <StatCard
+          label="In Review"
+          value={state.stats.inReview}
+          sub="Awaiting feedback"
+        />
+        <StatCard
+          label="Accepted"
+          value={state.stats.accepted}
+          sub="Ready to start"
+          accent
+        />
+      </section>
 
-        <div className="mt-8 text-center">
+      <section className="fade-up fade-up-2 mb-8">
+        <div className="mb-3.5 flex items-center justify-between">
+          <h2 className="text-[14px] font-semibold">Recent Applications</h2>
           <Link
             to="/applicant_dashboard/applications"
-            className="inline-flex rounded bg-black px-10 py-4 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-neutral-800"
+            className="inline-flex items-center gap-1 text-[12px] text-ink-3 hover:text-ink"
           >
-            View All Applications
+            View all <ChevronRight className="h-3 w-3" />
           </Link>
         </div>
-      </section>
-
-      <section className="mt-14 border-t border-neutral-200 pt-10">
-        <h2 className="text-2xl font-bold tracking-tight text-black">Recommended for You</h2>
-        <div className="mt-8 grid gap-4 xl:grid-cols-3">
-          {(state.recommendedProjects || []).map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))}
+        <div className="overflow-hidden rounded-DEFAULT border border-line bg-card">
+          {state.recentApplications.length === 0 ? (
+            <div className="px-5 py-8 text-center text-[13px] text-ink-3">
+              {state.loading ? 'Loading…' : 'No applications yet.'}
+            </div>
+          ) : (
+            state.recentApplications.map((app, i) => (
+              <ApplicationRow
+                key={app.application_id || app.id || i}
+                app={app}
+                isFirst={i === 0}
+              />
+            ))
+          )}
         </div>
       </section>
 
-      <section className="mt-14 border-t border-neutral-200 pt-10">
-        <h2 className="text-2xl font-bold uppercase tracking-tight text-black">
-          Featured Supervisors
-        </h2>
-        <div className="mt-8 grid gap-4 xl:grid-cols-3">
-          {(state.featuredSupervisors || []).map((supervisor) => (
-            <SupervisorCard key={supervisor.id} supervisor={supervisor} />
+      <section className="fade-up fade-up-3">
+        <div className="mb-3.5 flex items-center justify-between">
+          <h2 className="text-[14px] font-semibold">Recommended for You</h2>
+          <Link
+            to="/applicant_dashboard/opportunities"
+            className="inline-flex items-center gap-1 text-[12px] text-ink-3 hover:text-ink"
+          >
+            Browse all <ChevronRight className="h-3 w-3" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {state.recommendedProjects.map((project) => (
+            <ProjectMiniCard key={project.id} project={project} />
           ))}
+          {state.recommendedProjects.length === 0 && !state.loading && (
+            <div className="col-span-full rounded-DEFAULT border border-line bg-card px-5 py-8 text-center text-[13px] text-ink-3">
+              No recommended projects yet.
+            </div>
+          )}
         </div>
       </section>
-
-      {state.loading && <p className="mt-8 text-base text-neutral-500">Loading dashboard...</p>}
-    </main>
+    </div>
   )
 }

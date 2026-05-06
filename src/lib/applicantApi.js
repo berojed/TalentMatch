@@ -364,7 +364,24 @@ export async function getOpportunities(filters = {}) {
 
     if (error) throw error
 
-    const projects = (data || []).map(normalizeProject)
+    let projects = (data || []).map(normalizeProject)
+    const supIds = [...new Set((data || []).map((p) => p.supervisor_id).filter(Boolean))]
+    if (supIds.length) {
+      const { data: sups } = await supabase
+        .from('supervisors')
+        .select('user_id, first_name, last_name, academic_title')
+        .in('user_id', supIds)
+      const sm = {}
+      for (const s of sups || []) {
+        sm[s.user_id] = [s.academic_title, s.first_name, s.last_name]
+          .filter(Boolean)
+          .join(' ')
+      }
+      projects = projects.map((p) => ({
+        ...p,
+        supervisor_name: sm[p.supervisor_id] || '',
+      }))
+    }
     return {
       projects,
       filterOptions: {

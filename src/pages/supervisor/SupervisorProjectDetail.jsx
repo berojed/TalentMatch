@@ -40,7 +40,7 @@ export default function SupervisorProjectDetail() {
 
   if (!project) {
     return (
-      <main className="mx-auto max-w-[1100px] px-6 py-10">
+      <main className="mx-auto w-full max-w-[1100px] px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
         <Link
           to="/supervisor/opportunities"
           className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-black"
@@ -70,7 +70,7 @@ export default function SupervisorProjectDetail() {
     project.supervisors?.institution || 'GSI Helmholtz Centre for Heavy Ion Research'
 
   return (
-    <main className="mx-auto max-w-[1100px] px-6 py-10">
+    <main className="mx-auto w-full max-w-[1100px] px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
       {/* Back link */}
       <Link
         to="/supervisor/opportunities"
@@ -80,7 +80,7 @@ export default function SupervisorProjectDetail() {
         Back to Opportunities
       </Link>
 
-      <div className="flex gap-7 items-start">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-7">
         {/* ── Left column ── */}
         <div className="flex-1 min-w-0 space-y-4">
 
@@ -177,8 +177,8 @@ export default function SupervisorProjectDetail() {
         </div>
 
         {/* ── Right: Quick Info sidebar ── */}
-        <div className="w-72 shrink-0">
-          <div className="rounded-lg border border-neutral-200 bg-white p-6 sticky top-6">
+        <div className="w-full shrink-0 lg:w-72">
+          <div className="rounded-lg border border-neutral-200 bg-white p-6 lg:sticky lg:top-6">
             <h2 className="font-semibold text-black mb-5">Quick Info</h2>
             <div className="space-y-4">
               <InfoRow label="Research Center" value={researchCenter} />

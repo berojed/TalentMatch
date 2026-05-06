@@ -1,19 +1,18 @@
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BriefcaseBusiness, GraduationCap } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
 
 const roleConfig = {
   student: {
     label: 'Student',
     description:
-      'Create an account to find and apply to research opportunities.',
+      'Create an account to discover and apply to research projects.',
     loginDescription:
       'Find and apply to research opportunities with leading supervisors.',
     icon: GraduationCap,
   },
   supervisor: {
-    label: 'Research Supervisor',
+    label: 'Supervisor',
     description: 'Create an account to post opportunities and manage applications.',
     loginDescription:
       'Post opportunities and manage applications from talented students.',
@@ -21,117 +20,85 @@ const roleConfig = {
   },
 }
 
-function RoleCard({ mode, role, setError }) {
+function RoleCard({ mode, role }) {
   const navigate = useNavigate()
   const config = roleConfig[role]
   const Icon = config.icon
-
-  const startGoogleAuth = async () => {
-    setError('')
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/`,
-        queryParams: {
-          role,
-        },
-      },
-    })
-
-    if (error) {
-      setError(error.message)
-    }
-  }
 
   const handlePrimaryAction = () => {
     if (mode === 'login') {
       navigate(`/auth/login/${role}`)
       return
     }
-
     navigate(`/auth/signup/${role}`)
   }
 
   return (
-    <article className="w-full rounded border border-neutral-200 bg-white px-7 py-10">
-      <div className="mx-auto mb-7 flex h-16 w-16 items-center justify-center rounded-full bg-neutral-100">
-        <Icon className="h-8 w-8 text-neutral-900" strokeWidth={1.8} />
+    <button
+      type="button"
+      onClick={handlePrimaryAction}
+      className="group flex h-full w-full flex-col rounded-DEFAULT border border-line bg-card p-7 text-left transition-all hover:border-line-strong hover:shadow-card"
+    >
+      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-DEFAULT bg-subtle">
+        <Icon className="h-5 w-5 text-ink" strokeWidth={1.8} />
       </div>
 
-      <h2 className="mb-3 text-center text-[2rem] font-bold leading-tight text-neutral-950">
-        {config.label}
-      </h2>
+      <div className="mb-2 text-[16px] font-semibold text-ink">{config.label}</div>
 
-      <p className="mb-8 text-center text-lg leading-relaxed text-neutral-600">
+      <p className="mb-5 text-[13px] leading-[1.6] text-ink-2">
         {mode === 'signup' ? config.description : config.loginDescription}
       </p>
 
-      <button
-        type="button"
-        onClick={handlePrimaryAction}
-        className="mb-3 w-full rounded-full bg-black px-6 py-4 text-xl font-medium text-white transition hover:bg-neutral-800"
-      >
-        {mode === 'signup' ? 'Sign Up with Email' : `Sign In as ${config.label}`}
-      </button>
-
-      {mode === 'signup' && (
-        <button
-          type="button"
-          onClick={startGoogleAuth}
-          className="w-full rounded-full border-2 border-neutral-900 bg-white px-6 py-4 text-xl font-medium text-neutral-900 transition hover:bg-neutral-100"
-        >
-          Sign Up with Google
-        </button>
-      )}
-    </article>
+      <span className="mt-auto inline-flex w-full items-center justify-center rounded-sm bg-ink px-4 py-2 text-[13px] font-medium text-white transition-opacity group-hover:opacity-85">
+        {mode === 'signup' ? `Sign up as ${config.label}` : `Sign in as ${config.label}`}
+      </span>
+    </button>
   )
 }
 
 export default function AuthRoleSelection({ mode }) {
-  const [error, setError] = React.useState('')
-
   return (
-    <main className="min-h-screen bg-neutral-100 px-4 py-20 text-neutral-900 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-5xl">
-        <header className="mb-14 text-center">
-          <Link to="/" className="mb-3 inline-block text-6xl font-bold tracking-tight text-black hover:underline underline-offset-4 transition">TalentMatch</Link>
-          <p className="text-3xl text-neutral-600">
-            {mode === 'signup'
-              ? 'Create Your Account'
-              : 'Connect Research Talent with Opportunities'}
+    <main className="flex min-h-screen flex-col bg-bg text-ink">
+      <header className="border-b border-line bg-card px-8 py-5">
+        <Link to="/" className="text-[15px] font-bold tracking-tightish text-ink">
+          TalentMatch
+        </Link>
+      </header>
+
+      <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">
+        <div className="fade-up mb-10 text-center">
+          <h1 className="mb-2 text-[28px] font-bold tracking-tightish">
+            {mode === 'login' ? 'Welcome back' : 'Create your account'}
+          </h1>
+          <p className="text-[14px] text-ink-2">
+            {mode === 'login'
+              ? 'Sign in to continue your research journey'
+              : 'Choose your role to get started'}
           </p>
-        </header>
+        </div>
 
-        <section className="mx-auto grid max-w-4xl gap-6 lg:grid-cols-2">
-          <RoleCard mode={mode} role="student" setError={setError} />
-          <RoleCard mode={mode} role="supervisor" setError={setError} />
-        </section>
+        <div className="fade-up fade-up-1 grid w-full max-w-[560px] grid-cols-1 gap-3.5 sm:grid-cols-2">
+          <RoleCard mode={mode} role="student" />
+          <RoleCard mode={mode} role="supervisor" />
+        </div>
 
-        {error && <p className="mt-6 text-center text-base text-red-600">{error}</p>}
-
-        <footer className="mt-12 text-center">
-          {mode === 'signup' ? (
-            <p className="text-2xl text-neutral-500">
-              Already have an account?{' '}
-              <Link to="/auth/login" className="font-medium text-black hover:underline">
-                Sign in here
+        <div className="fade-up fade-up-2 mt-6 text-[13px] text-ink-3">
+          {mode === 'login' ? (
+            <span>
+              Don&apos;t have an account?{' '}
+              <Link to="/auth/signup" className="font-medium text-ink hover:underline">
+                Sign up
               </Link>
-            </p>
+            </span>
           ) : (
-            <>
-              <p className="text-2xl text-neutral-500">
-                Don&apos;t have an account?{' '}
-                <Link to="/auth/signup" className="font-medium text-black hover:underline">
-                  Sign up here
-                </Link>
-              </p>
-              <p className="mt-4 text-base text-neutral-500">
-                By signing in, you agree to our Terms of Service and Privacy Policy
-              </p>
-            </>
+            <span>
+              Already have an account?{' '}
+              <Link to="/auth/login" className="font-medium text-ink hover:underline">
+                Sign in
+              </Link>
+            </span>
           )}
-        </footer>
+        </div>
       </div>
     </main>
   )

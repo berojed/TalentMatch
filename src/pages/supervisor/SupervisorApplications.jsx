@@ -2,27 +2,28 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
-  Search,
+  Check,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
+  Eye,
+  Layers,
+  List as ListIcon,
   Mail,
-  GraduationCap,
-  Briefcase,
-  MapPin,
+  Search,
+  X,
 } from 'lucide-react'
 import {
   getSupervisorApplications,
   updateApplicationStatus,
 } from '../../lib/supervisorApi'
+import Badge, { StatusBadge } from '../../components/ui/Badge'
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
   { value: 'SUBMITTED', label: 'Pending' },
+  { value: 'UNDER_REVIEW', label: 'In Review' },
+  { value: 'SHORTLISTED', label: 'Shortlisted' },
   { value: 'ACCEPTED', label: 'Accepted' },
   { value: 'REJECTED', label: 'Rejected' },
-  { value: 'SHORTLISTED', label: 'Shortlisted' },
-  { value: 'UNDER_REVIEW', label: 'In Review' },
 ]
 
 function statusLabel(status) {
@@ -37,6 +38,29 @@ function statusLabel(status) {
   return map[status] || status
 }
 
+function formatSubmitted(value) {
+  if (!value) return ''
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+// Illustrative match score from available profile signals.
+function computeMatchScore(app) {
+  const summary = app.applicants?.profile_summary || {}
+  const skills = (summary.skills || []).length
+  const experience = (summary.experience_top || []).length
+  const projects = (summary.projects_top || []).length
+  const hasAcademic = !!summary?.academic?.field_of_study ? 1 : 0
+  return Math.min(98, 55 + skills * 4 + experience * 6 + projects * 5 + hasAcademic * 8)
+}
+
+function fullName(app) {
+  const f = app.applicants?.first_name || ''
+  const l = app.applicants?.last_name || ''
+  return `${f} ${l}`.trim() || app.applicant_email || 'Applicant'
+}
+
 export default function SupervisorApplications() {
   const [showFavorites, setShowFavorites] = useState(false)
   const [searchParams] = useSearchParams()
@@ -47,7 +71,7 @@ export default function SupervisorApplications() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState(() => {
-    if (!statusParam) return 'SUBMITTED'
+    if (!statusParam) return ''
     if (statusParam === 'ALL') return ''
     return statusParam
   })
@@ -62,10 +86,9 @@ export default function SupervisorApplications() {
     async function load() {
       setLoading(true)
       try {
-        const data = await getSupervisorApplications(
-          projectFilter || null,
-          { favoritedOnly: showFavorites }
-        )
+        const data = await getSupervisorApplications(projectFilter || null, {
+          favoritedOnly: showFavorites,
+        })
         setApplications(data)
       } catch (err) {
         console.error(err)
@@ -78,13 +101,10 @@ export default function SupervisorApplications() {
 
   const filtered = useMemo(() => {
     return applications.filter((app) => {
-      if (statusFilter && app.status !== statusFilter) {
-        return false
-      }
+      if (statusFilter && app.status !== statusFilter) return false
       if (search) {
         const q = search.toLowerCase()
-        const name =
-          `${app.applicants?.first_name || ''} ${app.applicants?.last_name || ''}`.toLowerCase()
+        const name = fullName(app).toLowerCase()
         const email = (app.applicant_email || '').toLowerCase()
         const degree = (app.degree_label || '').toLowerCase()
         if (!name.includes(q) && !email.includes(q) && !degree.includes(q)) return false
@@ -92,11 +112,16 @@ export default function SupervisorApplications() {
       return true
     })
   }, [applications, search, statusFilter])
-
-  const clearFilters = () => {
-    setSearch('')
-    setStatusFilter('')
-  }
+  const swipeDeck = useMemo(
+    () =>
+      filtered.filter(
+        (a) =>
+          a.status !== 'ACCEPTED' &&
+          a.status !== 'REJECTED' &&
+          a.status !== 'WITHDRAWN',
+      ),
+    [filtered],
+  )
 
   const mutateStatusLocally = (applicationId, nextStatus) => {
     setApplications((prev) =>
@@ -110,11 +135,8 @@ export default function SupervisorApplications() {
 
   const commitStatusChange = async (application, nextStatus) => {
     if (!application?.application_id || isMutatingStatus) return
-
     const previousStatus = application.status
-    const applicantName = `${application.applicants?.first_name || ''} ${
-      application.applicants?.last_name || ''
-    }`.trim()
+    const applicantName = fullName(application)
 
     if (undoTimerRef.current) {
       clearTimeout(undoTimerRef.current)
@@ -149,12 +171,10 @@ export default function SupervisorApplications() {
 
   const handleUndo = async () => {
     if (!undoAction || isMutatingStatus) return
-
     if (undoTimerRef.current) {
       clearTimeout(undoTimerRef.current)
       undoTimerRef.current = null
     }
-
     setStatusMutationError('')
     mutateStatusLocally(undoAction.applicationId, undoAction.previousStatus)
 
@@ -171,134 +191,103 @@ export default function SupervisorApplications() {
   }
 
   useEffect(() => {
-    const maxIndex = Math.max(filtered.length - 1, 0)
-    if (swipeIndex > maxIndex) {
-      setSwipeIndex(maxIndex)
-    }
-  }, [filtered.length, swipeIndex])
+    const maxIndex = Math.max(swipeDeck.length - 1, 0)
+    if (swipeIndex > maxIndex) setSwipeIndex(maxIndex)
+  }, [swipeDeck.length, swipeIndex])
 
   useEffect(() => {
     return () => {
-      if (undoTimerRef.current) {
-        clearTimeout(undoTimerRef.current)
-      }
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
     }
   }, [])
 
   return (
-    <main className="mx-auto max-w-[1100px] px-6 py-10">
-      {/* Back */}
+    <div className="px-6 py-8 sm:px-9 lg:max-w-[1000px]">
       <Link
         to="/supervisor"
-        className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-black mb-6"
+        className="mb-6 inline-flex items-center gap-1.5 text-[13px] text-ink-2 hover:text-ink"
       >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Dashboard
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
       </Link>
 
-      <div className="flex items-baseline gap-4">
-        <h1 className="text-4xl font-bold tracking-tight text-black">
-          {showFavorites ? 'Shortlisted Applications' : 'All Applications'}
-        </h1>
-        <button
-          type="button"
-          onClick={() => setShowFavorites((v) => !v)}
-          className="text-sm text-neutral-500 underline-offset-2 hover:underline hover:text-black transition"
-        >
-          {showFavorites ? 'Show All' : 'Show Shortlisted'}
-        </button>
-      </div>
-      <p className="mt-1 text-neutral-500">
-        {showFavorites
-          ? "Applications you've shortlisted for follow-up."
-          : 'Review and manage all student applications across your projects.'}
-      </p>
-
-      {/* Filters card */}
-      <div className="mt-6 rounded-lg border border-neutral-200 bg-white p-5">
-        <div className="flex gap-5">
-          {/* Search */}
-          <div className="flex-1">
-            <p className="mb-1.5 text-xs font-semibold tracking-widest text-neutral-500 uppercase">
-              Search Applications
-            </p>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by student name, email, or degree level..."
-                className="w-full rounded border border-neutral-200 pl-9 pr-4 py-2.5 text-sm focus:border-neutral-400 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Status dropdown */}
-          <div className="w-56">
-            <p className="mb-1.5 text-xs font-semibold tracking-widest text-neutral-500 uppercase">
-              Filter by Status
-            </p>
-            <div className="relative">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full appearance-none rounded border border-neutral-200 px-4 py-2.5 text-sm focus:border-neutral-400 focus:outline-none pr-8 bg-white"
-              >
-                {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
-            </div>
-          </div>
+      <header className="fade-up mb-6">
+        <div className="flex flex-wrap items-baseline gap-3">
+          <h1 className="text-[22px] font-bold tracking-tightish">
+            {showFavorites ? 'Shortlisted Applications' : 'All Applications'}
+          </h1>
+          <button
+            type="button"
+            onClick={() => setShowFavorites((v) => !v)}
+            className="text-[12px] text-ink-3 hover:text-ink"
+          >
+            {showFavorites ? 'Show All' : 'Show Shortlisted'}
+          </button>
         </div>
+        <p className="mt-1 text-[13px] text-ink-2">
+          {showFavorites
+            ? 'Applications you’ve shortlisted for follow-up.'
+            : 'Review and manage student applications across your projects.'}
+        </p>
+      </header>
 
-        <button
-          onClick={clearFilters}
-          className="mt-3 rounded border border-neutral-200 px-3 py-1.5 text-xs text-neutral-500 hover:text-black hover:bg-neutral-50 transition"
-        >
-          Clear Filters
-        </button>
-      </div>
-
-      {/* View mode toggle */}
-      <div className="mt-5 flex gap-1">
-        <button
-          onClick={() => setViewMode('list')}
-          className={`rounded px-5 py-2 text-sm font-medium transition ${
-            viewMode === 'list'
-              ? 'bg-black text-white'
-              : 'border border-neutral-300 text-neutral-600 hover:bg-neutral-50'
-          }`}
-        >
-          List View
-        </button>
-        <button
-          onClick={() => {
-            setViewMode('swipe')
-            setSwipeIndex(0)
-          }}
-          className={`rounded px-5 py-2 text-sm font-medium transition ${
-            viewMode === 'swipe'
-              ? 'bg-black text-white'
-              : 'border border-neutral-300 text-neutral-600 hover:bg-neutral-50'
-          }`}
-        >
-          Swipe Mode
-        </button>
+      {/* Filter row */}
+      <div className="fade-up fade-up-1 mb-5 flex flex-wrap items-center gap-2.5">
+        <div className="relative min-w-[240px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-3" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, email, degree..."
+            className="w-full rounded-sm border border-line bg-card py-2 pl-9 pr-3 text-[13px] outline-none transition-colors focus:border-line-strong"
+          />
+        </div>
+        <div className="relative w-[180px]">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full appearance-none rounded-sm border border-line bg-card px-3 py-2 pr-8 text-[13px] outline-none focus:border-line-strong"
+          >
+            {STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-ink-3" />
+        </div>
+        <div className="flex gap-1.5 rounded-sm border border-line bg-card p-[3px]">
+          {[
+            { key: 'list', Icon: ListIcon, label: 'List' },
+            { key: 'swipe', Icon: Layers, label: 'Swipe' },
+          ].map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              onClick={() => {
+                setViewMode(m.key)
+                if (m.key === 'swipe') setSwipeIndex(0)
+              }}
+              className={[
+                'inline-flex items-center gap-1.5 rounded-sm px-3 py-1 text-[12px] font-medium transition-colors',
+                viewMode === m.key ? 'bg-ink text-white' : 'text-ink-2 hover:text-ink',
+              ].join(' ')}
+            >
+              <m.Icon className="h-3 w-3" />
+              {m.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-black" />
+        <div className="flex justify-center py-16">
+          <span className="spinner" />
         </div>
       ) : viewMode === 'list' ? (
         <ListView filtered={filtered} />
       ) : (
         <SwipeView
-          filtered={filtered}
+          filtered={swipeDeck}
           index={swipeIndex}
           setIndex={setSwipeIndex}
           onStatusSwipe={commitStatusChange}
@@ -307,355 +296,287 @@ export default function SupervisorApplications() {
       )}
 
       {statusMutationError && (
-        <div className="mt-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mt-4 rounded-sm border border-danger-border bg-danger-bg px-3 py-2 text-[13px] text-danger">
           {statusMutationError}
         </div>
       )}
 
       {undoAction && (
-        <div className="fixed bottom-6 right-6 z-50 rounded border border-neutral-200 bg-white px-4 py-3 shadow-lg">
-          <p className="text-sm text-neutral-700">
-            {undoAction.applicantName || 'Application'} marked as {statusLabel(undoAction.nextStatus)}.
-          </p>
+        <div
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-DEFAULT border border-line bg-card px-4 py-3 text-[13px] shadow-pop"
+          style={{ animation: 'slideDown .2s ease' }}
+        >
+          <span>
+            <strong>{undoAction.applicantName}</strong> marked as{' '}
+            {statusLabel(undoAction.nextStatus)}.
+          </span>
           <button
             type="button"
             onClick={handleUndo}
             disabled={isMutatingStatus}
-            className="mt-2 text-sm font-semibold text-black underline disabled:opacity-50"
+            className="font-semibold text-ink underline disabled:opacity-50"
           >
             Undo
           </button>
         </div>
       )}
-    </main>
-  )
-}
-
-/* ── List view ── */
-function ListView({ filtered }) {
-  return (
-    <>
-      <p className="mt-4 text-sm text-neutral-500">
-        {filtered.length} application{filtered.length !== 1 ? 's' : ''} found
-      </p>
-      {filtered.length === 0 ? (
-        <p className="py-16 text-center text-neutral-400">No applications found.</p>
-      ) : (
-        <div className="mt-3 rounded-lg border border-neutral-200 bg-white divide-y divide-neutral-100">
-          {filtered.map((app) => (
-            <ApplicationRow key={app.application_id} app={app} />
-          ))}
-        </div>
-      )}
-    </>
-  )
-}
-
-function ApplicationRow({ app }) {
-  const submitted = new Date(app.submitted_at).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-
-  return (
-    <div className="flex items-center justify-between gap-4 px-6 py-4">
-      <div className="min-w-0">
-        <p className="font-semibold text-black">
-          {app.applicants?.first_name} {app.applicants?.last_name}
-        </p>
-        <p className="text-sm text-neutral-500">
-          {app.degree_label ? `${app.degree_label} \u2022 ` : ''}
-          {app.applicant_email}
-        </p>
-        <p className="mt-0.5 text-xs text-neutral-400">Submitted {submitted}</p>
-      </div>
-
-      <div className="flex items-center gap-4 shrink-0">
-        <span className="text-sm text-neutral-500">{statusLabel(app.status)}</span>
-        <Link
-          to={`/supervisor/applications/${app.application_id}`}
-          className="rounded bg-black px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-800 transition"
-        >
-          Review
-        </Link>
-      </div>
     </div>
   )
 }
 
-/* ── Swipe mode ── */
+function ListView({ filtered }) {
+  return (
+    <div className="fade-up fade-up-2">
+      <div className="mb-2.5 text-[12px] text-ink-3">
+        {filtered.length} application{filtered.length !== 1 ? 's' : ''} found
+      </div>
+      {filtered.length === 0 ? (
+        <div className="rounded-DEFAULT border border-line bg-card px-5 py-10 text-center text-[13px] text-ink-3">
+          No applications match your filters.
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-DEFAULT border border-line bg-card">
+          <div className="hidden grid-cols-[2.5fr_2fr_1fr_1fr_auto] gap-3 border-b border-line px-5 py-2.5 sm:grid">
+            {['Applicant', 'Project', 'Submitted', 'Status', ''].map((h, i) => (
+              <div
+                key={i}
+                className="text-[10px] font-semibold uppercase tracking-wider2 text-ink-3"
+              >
+                {h}
+              </div>
+            ))}
+          </div>
+          {filtered.map((app, i) => (
+            <ApplicationRow
+              key={app.application_id}
+              app={app}
+              isLast={i === filtered.length - 1}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ApplicationRow({ app, isLast }) {
+  const skills = app.applicants?.profile_summary?.skills || []
+  return (
+    <div
+      className={[
+        'grid grid-cols-1 items-center gap-3 px-5 py-3 sm:grid-cols-[2.5fr_2fr_1fr_1fr_auto]',
+        isLast ? '' : 'border-b border-line',
+      ].join(' ')}
+    >
+      <div className="min-w-0">
+        <div className="text-[13px] font-medium text-ink">{fullName(app)}</div>
+        <div className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-3">
+          <Mail className="h-2.5 w-2.5 shrink-0" />
+          <span className="truncate">{app.applicant_email || '—'}</span>
+        </div>
+        {skills.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {skills.slice(0, 3).map((s) => (
+              <Badge key={s}>{s}</Badge>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="line-clamp-2 text-[12px] text-ink-2">
+        {app.projects?.title || '—'}
+      </div>
+      <div className="text-[12px] text-ink-3">{formatSubmitted(app.submitted_at)}</div>
+      <StatusBadge status={app.status} />
+      <Link
+        to={`/supervisor/applications/${app.application_id}`}
+        className="inline-flex items-center justify-center rounded-sm border border-line bg-card px-3 py-1.5 text-[12px] font-medium text-ink transition-colors hover:border-line-strong sm:justify-self-end"
+      >
+        Review
+      </Link>
+    </div>
+  )
+}
+
 function SwipeView({ filtered, index, setIndex, onStatusSwipe, isMutatingStatus }) {
   const [dragX, setDragX] = useState(0)
   const [dragging, setDragging] = useState(false)
   const dragState = useRef({ active: false, startX: 0, pointerId: null })
 
-  const safeIndex = Math.min(Math.max(index, 0), filtered.length - 1)
-  const app = filtered[safeIndex]
-
   if (filtered.length === 0) {
     return (
-      <p className="py-16 text-center text-neutral-400">No applications to review.</p>
+      <div className="rounded-DEFAULT border border-line bg-card px-5 py-10 text-center text-[13px] text-ink-3">
+        No applications to review.
+      </div>
     )
   }
 
-  const swipeable = app.status === 'SUBMITTED' || app.status === 'UNDER_REVIEW'
-  const isFirst = safeIndex === 0
-  const isLast = safeIndex === filtered.length - 1
+  const safeIndex = Math.min(Math.max(index, 0), filtered.length - 1)
+  const app = filtered[safeIndex]
+  const swipeable =
+    app.status === 'SUBMITTED' || app.status === 'UNDER_REVIEW' || app.status === 'SHORTLISTED'
   const swipeThreshold = 120
 
-  const applicantName =
-    `${app.applicants?.first_name || ''} ${app.applicants?.last_name || ''}`.trim()
-  const submitted = new Date(app.submitted_at).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  const matchScore = computeMatchScore(app)
+  const skills = app.applicants?.profile_summary?.skills || []
+  const hint = dragX < -50 ? 'REJECTED' : dragX > 50 ? 'ACCEPTED' : null
 
-  const swipeHint =
-    dragX < -50 ? 'REJECT' : dragX > 50 ? 'ACCEPT' : null
-
-  const onPointerDown = (event) => {
+  const onPointerDown = (e) => {
     if (!swipeable || isMutatingStatus) return
-    if (event.target.closest('a, button')) return
-    dragState.current = {
-      active: true,
-      startX: event.clientX,
-      pointerId: event.pointerId,
-    }
+    if (e.target.closest('a, button')) return
+    dragState.current = { active: true, startX: e.clientX, pointerId: e.pointerId }
     setDragging(true)
-    event.currentTarget.setPointerCapture(event.pointerId)
+    e.currentTarget.setPointerCapture(e.pointerId)
   }
-
-  const onPointerMove = (event) => {
-    if (!dragState.current.active || dragState.current.pointerId !== event.pointerId) return
-    setDragX(event.clientX - dragState.current.startX)
+  const onPointerMove = (e) => {
+    if (!dragState.current.active || dragState.current.pointerId !== e.pointerId) return
+    setDragX(e.clientX - dragState.current.startX)
   }
-
-  const resetDrag = () => {
+  const reset = () => {
     dragState.current = { active: false, startX: 0, pointerId: null }
     setDragging(false)
     setDragX(0)
   }
-
-  const onPointerUp = async (event) => {
-    if (!dragState.current.active || dragState.current.pointerId !== event.pointerId) return
-    event.currentTarget.releasePointerCapture(event.pointerId)
-
+  const onPointerUp = async (e) => {
+    if (!dragState.current.active || dragState.current.pointerId !== e.pointerId) return
+    e.currentTarget.releasePointerCapture(e.pointerId)
     const decision =
-      dragX > swipeThreshold
-        ? 'ACCEPTED'
-        : dragX < -swipeThreshold
-        ? 'REJECTED'
-        : null
-
-    resetDrag()
-
-    if (decision) {
-      await onStatusSwipe(app, decision)
-    }
+      dragX > swipeThreshold ? 'ACCEPTED' : dragX < -swipeThreshold ? 'REJECTED' : null
+    reset()
+    if (decision) await onStatusSwipe(app, decision)
   }
 
   return (
-    <div className="mt-6">
-      <p className="text-sm text-neutral-500 text-center mb-4">
-        {safeIndex + 1} of {filtered.length}
+    <div className="fade-up fade-up-2 flex flex-col items-center gap-5 pt-2 px-4 sm:px-6">
+      <p className="text-[12px] text-ink-3">
+        {safeIndex + 1} of {filtered.length} —{' '}
+        {swipeable ? 'Drag left to reject, right to accept' : 'Decision already made'}
       </p>
 
-      <div className="relative mx-auto max-w-2xl">
-        {/* Swipe hint overlays */}
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-between px-8 z-10">
-          <span
-            className={`rounded border border-red-200 bg-red-50 px-3 py-1 text-xs font-bold text-red-600 transition-opacity ${
-              swipeHint === 'REJECT' ? 'opacity-100' : 'opacity-0'
-            }`}
+      <div className="relative w-full max-w-[420px] sm:max-w-[520px] lg:max-w-[640px] xl:max-w-[720px] mx-auto">
+        {hint && (
+          <div
+            className={[
+              'pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg border-2',
+              hint === 'ACCEPTED'
+                ? 'bg-ok-bg/30 border-ok'
+                : 'bg-danger-bg/30 border-danger',
+            ].join(' ')}
           >
-            REJECT
-          </span>
-          <span
-            className={`rounded border border-green-200 bg-green-50 px-3 py-1 text-xs font-bold text-green-600 transition-opacity ${
-              swipeHint === 'ACCEPT' ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
-            ACCEPT
-          </span>
-        </div>
+            <span
+              className={[
+                'text-[22px] font-bold tracking-[0.1em]',
+                hint === 'ACCEPTED' ? 'text-ok' : 'text-danger',
+              ].join(' ')}
+            >
+              {hint === 'ACCEPTED' ? '✓ ACCEPT' : '✕ REJECT'}
+            </span>
+          </div>
+        )}
 
-        <div
+        <article
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          onPointerCancel={resetDrag}
-          className={`rounded-[20px] border-[3px] border-neutral-900 bg-white shadow-2xl select-none touch-pan-y ${
-            swipeable && !isMutatingStatus ? 'cursor-grab active:cursor-grabbing' : ''
-          }`}
+          onPointerCancel={reset}
+          className={[
+            'select-none touch-pan-y overflow-hidden rounded-lg border border-line bg-card shadow-pop',
+            swipeable && !isMutatingStatus
+              ? 'cursor-grab active:cursor-grabbing'
+              : 'cursor-default',
+          ].join(' ')}
           style={{
-            transform: `translateX(${dragX}px) rotate(${dragX / 28}deg)`,
+            transform: `translateX(${dragX}px) rotate(${dragX / 30}deg)`,
             transition: dragging ? 'none' : 'transform 0.25s ease',
             opacity: isMutatingStatus ? 0.7 : 1,
           }}
         >
-          {/* Header */}
-          <header className="rounded-t-[16px] bg-gradient-to-r from-black to-slate-900 p-6 text-white">
-            <h3 className="text-2xl font-bold">{applicantName || 'Unknown Applicant'}</h3>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {app.degree_label && (
-                <span className="inline-flex items-center gap-1 rounded bg-white/10 px-2.5 py-1 text-xs text-neutral-200">
-                  <GraduationCap className="h-3.5 w-3.5" />
-                  {app.degree_label}
-                </span>
-              )}
-              {app.applicant_email && (
-                <span className="inline-flex items-center gap-1 rounded bg-white/10 px-2.5 py-1 text-xs text-neutral-200">
-                  <Mail className="h-3.5 w-3.5" />
-                  {app.applicant_email}
-                </span>
-              )}
-              <span className="rounded bg-white/10 px-2.5 py-1 text-xs text-neutral-200">
-                Submitted {submitted}
-              </span>
-            </div>
-          </header>
-
-          <div className="space-y-3 p-5">
-            {/* Status chip */}
-            <span
-              className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold tracking-wider ${
-                swipeable
-                  ? 'border-yellow-400 text-yellow-700'
-                  : app.status === 'ACCEPTED'
-                  ? 'border-green-400 text-green-700'
-                  : app.status === 'REJECTED'
-                  ? 'border-red-400 text-red-700'
-                  : 'border-neutral-400 text-neutral-700'
-              }`}
-            >
-              {statusLabel(app.status)}
-            </span>
-
-            {/* Project info */}
-            {app.projects?.title && (
-              <div className="rounded border border-neutral-200 p-3">
-                <p className="text-xs uppercase tracking-wide text-neutral-400">Applied to Project</p>
-                <p className="mt-0.5 text-base font-semibold text-neutral-800">{app.projects.title}</p>
-                <div className="mt-1.5 flex flex-wrap gap-3 text-xs text-neutral-500">
-                  {app.projects.department && (
-                    <span className="inline-flex items-center gap-1">
-                      <Briefcase className="h-3.5 w-3.5" />
-                      {app.projects.department}
+          <div className="bg-ink px-5 sm:px-6 lg:px-8 pb-5 pt-6 lg:pt-8">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h3 className="mb-1 text-[20px] sm:text-[22px] lg:text-[24px] font-bold text-white">{fullName(app)}</h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {app.degree_label && (
+                    <span className="rounded-sm bg-white/10 px-2 py-0.5 text-[11px] text-white/80">
+                      {app.degree_label}
                     </span>
                   )}
-                  {app.projects.location && (
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin className="h-3.5 w-3.5" />
-                      {app.projects.location}
+                  {app.applicant_email && (
+                    <span className="rounded-sm bg-white/10 px-2 py-0.5 text-[11px] text-white/80">
+                      {app.applicant_email}
                     </span>
                   )}
                 </div>
               </div>
-            )}
+              <div className="rounded-sm bg-accent px-2.5 py-1 text-center">
+                <div className="text-[18px] font-bold leading-none text-accent-fg">
+                  {matchScore}
+                </div>
+                <div className="mt-0.5 text-[9px] font-semibold tracking-wider2 text-accent-fg">
+                  MATCH
+                </div>
+              </div>
+            </div>
+          </div>
 
-            {/* Cover letter */}
-            {app.message && (
-              <div className="rounded border border-neutral-200 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Cover Letter</p>
-                <p className="mt-1 text-sm leading-relaxed text-neutral-600 line-clamp-5">
-                  {app.message}
-                </p>
+          <div className="p-5 sm:p-6 lg:p-8">
+            <div className="mb-3.5 rounded-sm border border-line px-3.5 py-3">
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider2 text-ink-3">
+                Applied to
+              </div>
+              <div className="text-[13px] font-medium">
+                {app.projects?.title || '—'}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <div className="mb-1.5 flex items-center gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wider2 text-ink-3">
+                  Status
+                </span>
+                <StatusBadge status={app.status} />
+              </div>
+            </div>
+
+            {skills.length > 0 && (
+              <div className="mb-4">
+                <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider2 text-ink-3">
+                  Skills
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {skills.map((s) => (
+                    <Badge key={s}>{s}</Badge>
+                  ))}
+                </div>
               </div>
             )}
 
-            {/* Profile snapshot */}
-            <ProfileSnapshot summary={app.applicants?.profile_summary} />
-
-            {/* Full review CTA */}
-            <Link
-              to={`/supervisor/applications/${app.application_id}`}
-              className="inline-flex w-full items-center justify-center rounded-full bg-black px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-neutral-800"
-            >
-              View Full Application & Review
-            </Link>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                disabled={!swipeable || isMutatingStatus}
+                onClick={() => onStatusSwipe(app, 'REJECTED')}
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm border border-danger-border bg-danger-bg px-3 py-2.5 sm:py-3 text-[13px] sm:text-[14px] font-medium text-danger transition-opacity hover:opacity-85 disabled:opacity-40"
+              >
+                <X className="h-3.5 w-3.5" /> Reject
+              </button>
+              <Link
+                to={`/supervisor/applications/${app.application_id}`}
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm border border-line bg-card px-3 py-2.5 sm:py-3 text-[13px] sm:text-[14px] font-medium text-ink transition-colors hover:border-line-strong"
+              >
+                <Eye className="h-3.5 w-3.5" /> Full Review
+              </Link>
+              <button
+                type="button"
+                disabled={!swipeable || isMutatingStatus}
+                onClick={() => onStatusSwipe(app, 'ACCEPTED')}
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-sm bg-accent px-3 py-2.5 sm:py-3 text-[13px] sm:text-[14px] font-semibold text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-40"
+              >
+                <Check className="h-3.5 w-3.5" /> Accept
+              </button>
+            </div>
           </div>
-        </div>
+        </article>
       </div>
-
-      <p className="mt-4 text-center text-xs text-neutral-400">
-        {swipeable
-          ? 'Drag left to reject \u2022 Drag right to accept'
-          : 'This application has been decided. Use full review for further actions.'}
-      </p>
-
-      <div className="flex justify-center gap-3 mt-5">
-        <button
-          disabled={isFirst}
-          onClick={() => setIndex((i) => i - 1)}
-          className="flex items-center gap-1 rounded border border-neutral-200 px-4 py-2 text-sm text-neutral-600 disabled:opacity-30 hover:bg-neutral-50 transition"
-        >
-          <ChevronLeft className="h-4 w-4" /> Previous
-        </button>
-        <button
-          disabled={isLast}
-          onClick={() => setIndex((i) => i + 1)}
-          className="flex items-center gap-1 rounded border border-neutral-200 px-4 py-2 text-sm text-neutral-600 disabled:opacity-30 hover:bg-neutral-50 transition"
-        >
-          Next <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function ProfileSnapshot({ summary }) {
-  if (!summary) {
-    return (
-      <div className="rounded border border-neutral-200 p-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-          Applicant Profile
-        </p>
-        <p className="text-xs text-neutral-500">No profile yet.</p>
-      </div>
-    )
-  }
-
-  const { academic, skills, experience_top, projects_top } = summary
-  const academicLine = [academic?.field_of_study, academic?.graduation_year]
-    .filter(Boolean)
-    .join(' • ')
-  const topExp = experience_top?.[0]
-  const topProject = projects_top?.[0]
-
-  return (
-    <div className="rounded border border-neutral-200 p-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-        Applicant Profile
-      </p>
-      {academicLine && (
-        <p className="mt-1 text-sm text-neutral-700">{academicLine}</p>
-      )}
-      {topExp && (
-        <p className="mt-1 text-xs text-neutral-600 line-clamp-2">
-          <span className="font-semibold">Experience:</span>{' '}
-          {topExp.role}
-          {topExp.organization ? ` @ ${topExp.organization}` : ''}
-        </p>
-      )}
-      {topProject && (
-        <p className="mt-1 text-xs text-neutral-600 line-clamp-2">
-          <span className="font-semibold">Project:</span> {topProject.title}
-        </p>
-      )}
-      {skills && skills.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {skills.slice(0, 6).map((skill, i) => (
-            <span
-              key={i}
-              className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-700"
-            >
-              {skill}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

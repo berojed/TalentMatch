@@ -208,8 +208,8 @@ export default function AdminDashboard() {
   }
 
   return (
-    <main className="mx-auto max-w-[1100px] px-6 py-10">
-      <div className="flex items-center gap-3">
+    <main className="mx-auto w-full max-w-[1100px] px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+      <div className="flex flex-wrap items-center gap-3">
         <Shield className="h-6 w-6 text-neutral-700" />
         <h1 className="text-3xl font-bold tracking-tight text-black">Admin Dashboard</h1>
       </div>
@@ -295,7 +295,7 @@ export default function AdminDashboard() {
           <tr key={a.application_id}>
             <td className="px-4 py-2.5 font-mono text-xs text-neutral-600">{a.application_id.slice(0, 8)}</td>
             <td className="px-4 py-2.5 font-medium text-black">{a.applicant_name}</td>
-            <td className="px-4 py-2.5 text-neutral-600 truncate max-w-xs">{a.project_title}</td>
+            <td className="px-4 py-2.5 text-neutral-600 truncate max-w-[140px] sm:max-w-xs">{a.project_title}</td>
             <td className="px-4 py-2.5">
               <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                 a.status === 'ACCEPTED' ? 'bg-green-50 text-green-700' :
